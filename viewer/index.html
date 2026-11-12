@@ -1,0 +1,693 @@
+<title>X-Ray Hands Penetration Audit</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..800&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a single reading column of instrument panels; summary first, then distributions, objects, sequences, 3D frames. */
+:root {
+  --bg: #f4f6f8;
+  --panel: #fcfdfd;
+  --ink: #0e1419;
+  --ink-2: #4a5560;
+  --muted: #7d8791;
+  --rule: #dfe4e8;
+  --axis: #b9c1c8;
+  --accent: #1d5f9e;
+  --accent-soft: #e3edf7;
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s5: #e87ba4; --s6: #008300;
+  --inside: #d03b3b; --mid: #c9cbc6; --outside: #2a78d6;
+  --good: #0ca30c; --warn: #fab219; --crit: #d03b3b;
+  --ring: rgba(14,20,25,0.10);
+  --f-display: "Archivo", "Arial Narrow", system-ui, sans-serif;
+  --f-body: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1316; --panel: #161b1f; --ink: #eef1f3; --ink-2: #b7c0c7; --muted: #87919a;
+    --rule: #262d33; --axis: #3a434a; --accent: #7fb2e8; --accent-soft: #1b2a38;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #008300;
+    --inside: #e66767; --mid: #5d625f; --outside: #3987e5; --ring: rgba(255,255,255,0.10);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1316; --panel: #161b1f; --ink: #eef1f3; --ink-2: #b7c0c7; --muted: #87919a;
+  --rule: #262d33; --axis: #3a434a; --accent: #7fb2e8; --accent-soft: #1b2a38;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181; --s6: #008300;
+  --inside: #e66767; --mid: #5d625f; --outside: #3987e5; --ring: rgba(255,255,255,0.10);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.55 var(--f-body); }
+.wrap { max-width: 1120px; margin: 0 auto; padding-block: 28px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 28px; }
+h1, h2, h3 { font-family: var(--f-display); font-stretch: 85%; text-wrap: balance; margin: 0; letter-spacing: -0.01em; }
+h1 { font-size: clamp(30px, 5vw, 46px); font-weight: 800; line-height: 1.05; }
+h2 { font-size: 22px; font-weight: 700; }
+h3 { font-size: 16px; font-weight: 700; }
+p { margin: 0; max-width: 68ch; }
+.eyebrow { font: 500 11px/1 var(--f-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.mono, .num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+header { display: grid; gap: 12px; }
+header .lede { color: var(--ink-2); font-size: 16px; }
+.defs { display: flex; flex-wrap: wrap; gap: 8px 18px; color: var(--ink-2); font-size: 13px; }
+.defs b { color: var(--ink); font-weight: 600; }
+.banner { display: flex; gap: 10px; align-items: flex-start; padding: 10px 14px; border-radius: 8px;
+  background: var(--accent-soft); color: var(--ink); font-size: 14px; }
+.banner .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--warn); margin-top: 6px; flex: none; }
+section.panel { background: var(--panel); border: 1px solid var(--ring); border-radius: 10px; padding: 20px; display: grid; gap: 14px; min-width: 0; }
+.panel-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px; }
+.panel-head p { color: var(--ink-2); font-size: 14px; }
+.scroll { overflow-x: auto; min-width: 0; }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+th, td { padding: 7px 10px; text-align: right; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; }
+thead th { font: 500 11px/1.2 var(--f-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); border-bottom-color: var(--axis); vertical-align: bottom; }
+tbody td { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+tbody td:first-child { font-family: var(--f-body); color: var(--ink-2); }
+tr.key td { color: var(--ink); font-weight: 500; }
+tr.key td:first-child { color: var(--ink); font-weight: 600; }
+.swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+.pill { display: inline-flex; align-items: center; gap: 5px; font: 500 12px/1 var(--f-mono); padding: 4px 7px; border-radius: 999px; background: var(--bg); }
+.pill i { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 20px; }
+.chart { position: relative; min-width: 0; }
+.chart svg { width: 100%; height: auto; display: block; overflow: visible; }
+.chart .title { font-weight: 600; font-size: 14px; margin-bottom: 6px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12.5px; color: var(--ink-2); }
+.tip { position: absolute; pointer-events: none; background: var(--panel); border: 1px solid var(--ring); box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  border-radius: 8px; padding: 8px 10px; font-size: 12.5px; min-width: 170px; z-index: 5; }
+.tip .h { font: 500 11px/1.3 var(--f-mono); color: var(--muted); margin-bottom: 4px; }
+.tip .r { display: flex; justify-content: space-between; gap: 12px; font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+.controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 8px; overflow: hidden; }
+.seg button { font: 500 13px var(--f-body); padding: 6px 12px; border: 0; background: transparent; color: var(--ink-2); cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--panel); }
+.seg button:focus-visible, select:focus-visible, input:focus-visible, .frame-btn:focus-visible, th button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+select, input[type="search"] { font: 13px var(--f-body); padding: 6px 8px; border-radius: 8px; border: 1px solid var(--rule); background: var(--panel); color: var(--ink); max-width: 100%; }
+label.ctl { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; color: var(--ink-2); }
+.bar-cell { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
+.bar-cell .bar { height: 8px; border-radius: 0 4px 4px 0; background: var(--s1); min-width: 1px; }
+th button { all: unset; cursor: pointer; }
+th button[aria-sort]::after { content: " ↓"; }
+.viewer3d { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 16px; }
+@media (max-width: 760px) { .viewer3d { grid-template-columns: 1fr; } }
+#three { width: 100%; aspect-ratio: 4 / 3; max-width: 100%; border-radius: 8px; background: var(--bg); border: 1px solid var(--rule); touch-action: none; }
+.frame-list { display: grid; gap: 12px; align-content: start; }
+.frame-group { display: grid; gap: 6px; }
+.frame-btns { display: flex; flex-wrap: wrap; gap: 6px; }
+.frame-btn { font: 500 12px var(--f-mono); padding: 5px 8px; border-radius: 6px; border: 1px solid var(--rule); background: var(--panel); color: var(--ink-2); cursor: pointer; }
+.frame-btn[aria-pressed="true"] { border-color: var(--ink); color: var(--ink); background: var(--bg); }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 13px; }
+.kv dt { color: var(--muted); }
+.kv dd { margin: 0; font-family: var(--f-mono); font-variant-numeric: tabular-nums; text-align: right; word-break: break-all; }
+.ramp { height: 10px; border-radius: 3px; background: linear-gradient(90deg, var(--inside), var(--mid) 50%, var(--outside)); }
+.ramp-labels { display: flex; justify-content: space-between; font: 11px var(--f-mono); color: var(--muted); }
+.notes { display: grid; gap: 10px; color: var(--ink-2); font-size: 14px; }
+.notes li { max-width: 80ch; }
+.notes ul { margin: 0; padding-left: 18px; display: grid; gap: 8px; }
+.empty { color: var(--muted); font-size: 14px; padding: 18px 0; }
+td.heat { position: relative; }
+td.heat span { position: relative; }
+td.heat::before { content: ""; position: absolute; inset: 2px; border-radius: 4px; background: var(--s1); opacity: var(--a, 0); }
+tr.group td { font: 500 11px/1.2 var(--f-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); padding-top: 14px; }
+.heatmap3d { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: 20px; align-items: start; }
+@media (max-width: 760px) { .heatmap3d { grid-template-columns: 1fr; } }
+#heat3d { width: 100%; aspect-ratio: 1 / 1; max-width: 100%; border-radius: 8px; background: var(--bg); border: 1px solid var(--rule); touch-action: none; }
+.heat-ramp { height: 10px; border-radius: 3px; background: linear-gradient(90deg, var(--mid), var(--inside)); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <span class="eyebrow">X-Ray Hands · hand–object ground-truth audit</span>
+    <h1>How far do “ground truth” hands sink into objects?</h1>
+    <p class="lede">Signed-distance audit of ARCTIC, SHOW3D, HOT3D and EPIC-Contact: every annotated hand surface is tested against its object mesh, and every trajectory is checked for jitter relative to the object.</p>
+    <div class="defs">
+      <span><b>Contact frame</b> closest hand point ≤ 5 mm from the object</span>
+      <span><b>Penetration</b> deepest point of the subdivided hand surface (~2 mm spacing) inside the object</span>
+      <span><b>Jitter</b> mean hand-vertex residual in the object frame after a 6 Hz low-pass</span>
+      <span><b>Sim-clean</b> penetration ≤ 1 mm and jitter ≤ 0.5 mm</span>
+    </div>
+    <div class="banner" id="pending" hidden><span class="dot" aria-hidden="true"></span><span id="pending-text"></span></div>
+  </header>
+
+  <section class="panel" aria-labelledby="h-overall">
+    <div class="panel-head">
+      <h2 id="h-overall">Headline numbers</h2>
+      <p>Contact frames only. Rows in bold are the ones that decide whether a frame survives a simulator.</p>
+    </div>
+    <div class="scroll"><table id="overall"></table></div>
+  </section>
+
+  <section class="panel" aria-labelledby="h-dist">
+    <div class="panel-head">
+      <h2 id="h-dist">Distributions</h2>
+      <p>Cumulative share of contact frames at or below each depth. Hover to read every dataset at one value.</p>
+    </div>
+    <div class="legend" id="cdf-legend"></div>
+    <div class="grid2">
+      <div class="chart" id="cdf-pen"><div class="title">Penetration depth (mm)</div></div>
+      <div class="chart" id="cdf-jit"><div class="title">Jitter relative to the object (mm)</div></div>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="h-obj">
+    <div class="panel-head">
+      <h2 id="h-obj">By object</h2>
+      <div class="seg" id="obj-tabs" role="group" aria-label="Dataset"></div>
+    </div>
+    <div class="scroll"><table id="objects"></table></div>
+  </section>
+
+  <section class="panel" aria-labelledby="h-parts">
+    <div class="panel-head">
+      <h2 id="h-parts">By hand part</h2>
+      <p>Each hand vertex is labelled by part (from MANO skinning weights) and by side (palmar or back of hand). Rates are over hand contact frames.</p>
+    </div>
+    <div class="controls"><div class="seg" id="part-metric" role="group" aria-label="Metric"></div></div>
+    <div class="scroll"><table id="part-matrix"></table></div>
+    <div class="controls"><div class="seg" id="part-ds" role="group" aria-label="Dataset"></div></div>
+    <div class="heatmap3d">
+      <div style="display:grid;gap:10px;min-width:0">
+        <canvas id="heat3d" aria-label="Hand heat map of how often each vertex penetrates more than 2 mm"></canvas>
+        <div class="controls"><div class="seg" id="heat-view" role="group" aria-label="View"></div></div>
+        <div>
+          <div class="heat-ramp" aria-hidden="true"></div>
+          <div class="ramp-labels"><span>0%</span><span id="heat-max">–</span></div>
+          <p style="font-size:12.5px;color:var(--muted);margin-top:4px">Share of contact frames in which the vertex is more than 2 mm inside the object. Left and right hands are pooled on a right-hand template.</p>
+        </div>
+      </div>
+      <div style="min-width:0;display:grid;gap:8px">
+        <h3>Penetration &gt; 2 mm by object and part (%)</h3>
+        <div class="scroll"><table id="obj-part"></table></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="h-seq">
+    <div class="panel-head">
+      <h2 id="h-seq">Sequence explorer</h2>
+      <p>Penetration is max-pooled and jitter averaged into at most 160 bins per sequence. Shaded bins are mostly in contact.</p>
+    </div>
+    <div class="controls">
+      <div class="seg" id="seq-tabs" role="group" aria-label="Dataset"></div>
+      <input type="search" id="seq-filter" placeholder="Filter by subject, object, action" aria-label="Filter sequences">
+      <select id="seq-select" aria-label="Sequence"></select>
+      <div class="seg" id="hand-tabs" role="group" aria-label="Hand"></div>
+    </div>
+    <div id="seq-meta" class="defs"></div>
+    <div class="chart" id="seq-pen"><div class="title">Max penetration per bin (mm)</div></div>
+    <div class="chart" id="seq-jit"><div class="title">Jitter relative to the object (mm)</div></div>
+  </section>
+
+  <section class="panel" aria-labelledby="h-3d">
+    <div class="panel-head">
+      <h2 id="h-3d">Frame inspector</h2>
+      <p>Hand vertices are colored by signed distance to the object. Drag to orbit, scroll or pinch to zoom.</p>
+    </div>
+    <div class="viewer3d">
+      <canvas id="three" aria-label="3D view of the selected hand and object"></canvas>
+      <div class="frame-list">
+        <div id="frame-groups" class="frame-list"></div>
+        <div class="controls">
+          <label class="ctl"><input type="checkbox" id="xray" checked> X-ray object</label>
+          <label class="ctl"><input type="checkbox" id="wire"> Wireframe</label>
+        </div>
+        <div>
+          <div class="ramp" aria-hidden="true"></div>
+          <div class="ramp-labels"><span>−10 mm inside</span><span>0</span><span>+10 mm gap</span></div>
+        </div>
+        <dl class="kv" id="frame-kv"></dl>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel notes" aria-labelledby="h-notes">
+    <h2 id="h-notes">What to read into this</h2>
+    <ul id="notes">
+      <li><b>ARCTIC</b> is smooth but sits too deep. Motion-capture jitter is about 0.3 mm, yet the median contact frame is 3–4 mm inside the object and that depth barely changes frame to frame. That pattern is a surface bias (markers sit only on the back of the hand), not noise. Its own <span class="mono">fitting_err</span> does not predict penetration (Spearman 0.003).</li>
+      <li><b>EPIC-Contact</b> penetrates about as much at the median but with a heavy tail on pans, saucepans and cans, where generic category templates replace the real object. The per-frame tier is documented as broadcasting the central frame’s hand–object pose, yet the hand drifts 9–23 mm relative to the object within a clip (p50–p90 of 200 clips).</li>
+      <li><b>SHOW3D</b> is both deep and noisy. It estimates hands (multi-view IK) and objects (FoundPose + GoTrack) independently, with no temporal smoothing. The median contact frame is 5.2 mm inside the object, and 53% of frames are more than 5 mm in (ARCTIC: 26%). Jitter against the object is 1.3 mm median, about 4× ARCTIC’s. In 16% of frames the penetration depth jumps by more than 2 mm between frames. Fewer than 1% of frames are sim-clean. Left and right hands look alike (median 5.4 vs 5.1 mm).</li>
+      <li><b>HOT3D</b> ships two hand fits per frame: the UmeTrack mesh its optical mocap actually tracks, and a MANO fit to it. Scored against UmeTrack, HOT3D looks like ARCTIC: median penetration 3.0 mm, 18% of contact frames more than 5 mm in, p90 6.2 mm, and jitter against the object 0.37 mm. Its MANO hands sit deeper on the very same frames: median 5.0 mm, 50% more than 5 mm in, about 1.6 mm deeper per frame. That fits MANO fingertips landing about 6 mm from UmeTrack’s. Aria and Quest 3 clips agree to within 0.3 mm. The worst case is the 5 lb dumbbell (median 7.6 mm even with UmeTrack). Hand-frames are counted per (hand, object) pair, using 2,748 pairs from 2,804 training clips (150 frames at 30 fps). Object poses are mocap with scanned meshes.</li>
+      <li><b>By hand part.</b> ARCTIC’s overlap sits on the thumb and palm, which together hold 64% of its penetrating volume; the thumb is more than 2 mm inside in 53% of contact frames. About 70% of the volume is on the palmar side, consistent with a fit that is accurate on the marker-covered back of the hand but whose palm and finger pads sink into the object. HOT3D’s MANO hands put 51% of the volume on the thumb and 25% on the index finger. SHOW3D’s overlap is spread over the four fingers, with middle and ring deepest (p90 10–11 mm) and the palm minor (6% of volume). EPIC-Contact peaks at the index finger. In every dataset the back of the hand is also often inside (45–73% of frames over 2 mm). That cannot come from skin compression; it means whole finger segments pass into the object.</li>
+      <li><b>Left hands.</b> SHOW3D fits left hands with the corrected MANO left model (with its shape-direction sign fix). The audit uses the same model, and with it, fingertips match SHOW3D’s own hand landmarks to about 4 mm. ARCTIC’s released code uses the stock left model, so ARCTIC is evaluated that way too.</li>
+      <li>Hands are rigid skinned meshes. A few millimetres of “penetration” in a firm grasp can be real skin compression, but a persistent multi-millimetre overlap is still force a rigid simulator will resolve as push-out.</li>
+      <li>Meshes: ARCTIC objects are the released watertight templates articulated per frame; SHOW3D and HOT3D use the HOT3D BOP meshes; EPIC-Contact uses its shipped per-clip meshes. Sign uses the generalized winding number, which tolerates non-watertight scans.</li>
+    </ul>
+  </section>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(() => {
+  const NAMES = { arctic: "ARCTIC", show3d: "SHOW3D", hot3d: "HOT3D (MANO)", hot3d_ume: "HOT3D (UmeTrack)", epic_central: "EPIC-Contact (central)", epic_perframe: "EPIC-Contact (per-frame)" };
+  const ORDER = ["arctic", "show3d", "hot3d", "hot3d_ume", "epic_central", "epic_perframe"];
+  const COLOR = { arctic: "--s1", show3d: "--s2", hot3d: "--s5", hot3d_ume: "--s6", epic_central: "--s3", epic_perframe: "--s4" };
+  const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  const fmt = (v, d = 1) => (v === null || v === undefined || Number.isNaN(v)) ? "–" : Number(v).toFixed(d);
+  const el = (tag, attrs = {}, html = "") => { const e = document.createElement(tag); for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v); if (html) e.innerHTML = html; return e; };
+  const SVGNS = "http://www.w3.org/2000/svg";
+  const sv = (tag, attrs = {}) => { const e = document.createElementNS(SVGNS, tag); for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v); return e; };
+  let S = null, SER = null, F3 = null;
+
+  // ---------------------------------------------------------------- overall table
+  const ROWS = [
+    ["hand-frames", "Hand-frames analysed", 0, false],
+    ["contact %", "In contact (%)", 1, false],
+    ["pen>0 %", "Any penetration (%)", 1, false],
+    ["pen>2mm %", "Penetration > 2 mm (%)", 1, true],
+    ["pen>5mm %", "Penetration > 5 mm (%)", 1, true],
+    ["pen>10mm %", "Penetration > 10 mm (%)", 1, false],
+    ["pen p50 mm", "Penetration, median (mm)", 2, true],
+    ["pen p90 mm", "Penetration, p90 (mm)", 2, false],
+    ["pen p99 mm", "Penetration, p99 (mm)", 2, false],
+    ["pen vol p50 mm3", "Penetrating volume, median (mm³)", 0, false],
+    ["jitter-evaluable %", "Contact frames with a jitter estimate (%)", 1, false],
+    ["rel jitter p50 mm", "Jitter vs object, median (mm)", 2, true],
+    ["rel jitter p95 mm", "Jitter vs object, p95 (mm)", 2, true],
+    ["rel jitter>1mm %", "Jitter > 1 mm (%)", 1, false],
+    ["rel acc p95 m/s2", "Relative acceleration, p95 (m/s²)", 1, false],
+    ["hand world jitter p50 mm", "Hand jitter in world/camera, median (mm)", 2, false],
+    ["obj world jitter p50 mm", "Object jitter in world/camera, median (mm)", 2, false],
+    ["|dpen|>2mm %", "Depth jumps > 2 mm between frames (%)", 1, false],
+    ["pen<=1mm % (all contact)", "Penetration ≤ 1 mm (%)", 1, true],
+    ["sim-clean % (pen<=1mm & jitter<=0.5mm)", "Sim-clean (%)", 2, true],
+  ];
+  function overall() {
+    const ds = ORDER.filter((d) => S.overall[d]);
+    const t = document.getElementById("overall");
+    let h = "<thead><tr><th>Metric</th>" + ds.map((d) => `<th><span class="swatch" style="background:var(${COLOR[d]})"></span>${NAMES[d]}</th>`).join("") + "</tr></thead><tbody>";
+    for (const [k, label, dp, key] of ROWS) {
+      h += `<tr class="${key ? "key" : ""}"><td>${label}</td>` + ds.map((d) => {
+        const v = S.overall[d][k];
+        return `<td>${k === "hand-frames" ? Number(v).toLocaleString() : fmt(v, dp)}</td>`;
+      }).join("") + "</tr>";
+    }
+    t.innerHTML = h + "</tbody>";
+  }
+
+  // ---------------------------------------------------------------- tooltip helper
+  function tipFor(container) {
+    let t = container.querySelector(".tip");
+    if (!t) { t = el("div", { class: "tip", hidden: "" }); container.appendChild(t); }
+    return {
+      show(x, y, html) {
+        t.innerHTML = html; t.hidden = false;
+        const cw = container.clientWidth, tw = t.offsetWidth;
+        t.style.left = Math.max(0, Math.min(cw - tw, x + 14)) + "px";
+        t.style.top = Math.max(0, y - 10) + "px";
+      },
+      hide() { t.hidden = true; },
+    };
+  }
+
+  // ---------------------------------------------------------------- CDF chart
+  const QS = Array.from({ length: 201 }, (_, i) => i / 2);
+  function fracBelow(vals, x) {  // vals = percentiles at QS
+    if (x <= vals[0]) return 0;
+    if (x >= vals[vals.length - 1]) return 100;
+    let lo = 0, hi = vals.length - 1;
+    while (hi - lo > 1) { const m = (lo + hi) >> 1; if (vals[m] <= x) lo = m; else hi = m; }
+    const span = vals[hi] - vals[lo];
+    return QS[lo] + (span > 0 ? (x - vals[lo]) / span : 0) * (QS[hi] - QS[lo]);
+  }
+  function cdfChart(id, key, xmax, refs, unit) {
+    const box = document.getElementById(id);
+    box.querySelectorAll("svg,.empty").forEach((n) => n.remove());
+    const ds = ORDER.filter((d) => S.cdf[d] && S.cdf[d][key]);
+    if (!ds.length) { box.appendChild(el("div", { class: "empty" }, "No dataset has an estimate for this metric yet.")); return; }
+    const W = 520, H = 280, m = { l: 44, r: 16, t: 10, b: 36 };
+    const X = (v) => m.l + (Math.min(v, xmax) / xmax) * (W - m.l - m.r);
+    const Y = (p) => m.t + (1 - p / 100) * (H - m.t - m.b);
+    const svg = sv("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": `Cumulative distribution of ${key === "pen" ? "penetration depth" : "jitter"}` });
+    for (let p = 0; p <= 100; p += 25) {
+      svg.appendChild(sv("line", { x1: m.l, x2: W - m.r, y1: Y(p), y2: Y(p), stroke: css("--rule"), "stroke-width": 1 }));
+      const tx = sv("text", { x: m.l - 8, y: Y(p) + 4, "text-anchor": "end", fill: css("--muted"), "font-size": 11, "font-family": css("--f-mono") }); tx.textContent = p + "%"; svg.appendChild(tx);
+    }
+    const ticks = []; const step = xmax <= 5 ? 1 : xmax <= 12 ? 2 : 5;
+    for (let v = 0; v <= xmax + 1e-9; v += step) ticks.push(v);
+    for (const v of ticks) {
+      const tx = sv("text", { x: X(v), y: H - m.b + 18, "text-anchor": "middle", fill: css("--muted"), "font-size": 11, "font-family": css("--f-mono") }); tx.textContent = v; svg.appendChild(tx);
+    }
+    svg.appendChild(sv("line", { x1: m.l, x2: W - m.r, y1: Y(0), y2: Y(0), stroke: css("--axis"), "stroke-width": 1 }));
+    for (const r of refs) {
+      svg.appendChild(sv("line", { x1: X(r), x2: X(r), y1: m.t, y2: Y(0), stroke: css("--axis"), "stroke-width": 1, "stroke-dasharray": "3 4" }));
+      const tx = sv("text", { x: X(r) + 4, y: m.t + 10, fill: css("--muted"), "font-size": 10.5, "font-family": css("--f-mono") }); tx.textContent = r + " mm"; svg.appendChild(tx);
+    }
+    for (const d of ds) {
+      const vals = S.cdf[d][key];
+      let path = "";
+      vals.forEach((v, i) => { if (v === null) return; path += (path ? "L" : "M") + X(v).toFixed(1) + "," + Y(QS[i]).toFixed(1); });
+      svg.appendChild(sv("path", { d: path, fill: "none", stroke: css(COLOR[d]), "stroke-width": 2, "stroke-linejoin": "round" }));
+    }
+    const cross = sv("line", { y1: m.t, y2: Y(0), stroke: css("--ink-2"), "stroke-width": 1, visibility: "hidden" });
+    svg.appendChild(cross);
+    const dots = ds.map((d) => { const c = sv("circle", { r: 4, fill: css(COLOR[d]), stroke: css("--panel"), "stroke-width": 2, visibility: "hidden" }); svg.appendChild(c); return c; });
+    const hit = sv("rect", { x: m.l, y: m.t, width: W - m.l - m.r, height: H - m.t - m.b, fill: "transparent" });
+    svg.appendChild(hit);
+    box.appendChild(svg);
+    const tip = tipFor(box);
+    const move = (ev) => {
+      const r = svg.getBoundingClientRect(); const sx = (ev.clientX - r.left) * (W / r.width);
+      const x = Math.max(0, Math.min(xmax, ((sx - m.l) / (W - m.l - m.r)) * xmax));
+      cross.setAttribute("x1", X(x)); cross.setAttribute("x2", X(x)); cross.setAttribute("visibility", "visible");
+      let rows = "";
+      ds.forEach((d, i) => {
+        const f = fracBelow(S.cdf[d][key], x);
+        dots[i].setAttribute("cx", X(x)); dots[i].setAttribute("cy", Y(f)); dots[i].setAttribute("visibility", "visible");
+        rows += `<div class="r"><span><span class="swatch" style="background:var(${COLOR[d]})"></span>${NAMES[d]}</span><span>${f.toFixed(1)}%</span></div>`;
+      });
+      tip.show(ev.clientX - box.getBoundingClientRect().left, ev.clientY - box.getBoundingClientRect().top,
+        `<div class="h">share of contact frames ≤ ${x.toFixed(2)} ${unit}</div>${rows}`);
+    };
+    hit.addEventListener("pointermove", move);
+    hit.addEventListener("pointerleave", () => { tip.hide(); cross.setAttribute("visibility", "hidden"); dots.forEach((c) => c.setAttribute("visibility", "hidden")); });
+  }
+  function cdfLegend() {
+    const L = document.getElementById("cdf-legend"); L.innerHTML = "";
+    for (const d of ORDER.filter((d) => S.cdf[d])) {
+      const c = S.cdf[d];
+      L.appendChild(el("span", {}, `<span class="swatch" style="background:var(${COLOR[d]})"></span>${NAMES[d]} <span class="mono" style="color:var(--muted)">n=${c.n_pen.toLocaleString()}</span>`));
+    }
+  }
+
+  // ---------------------------------------------------------------- segmented control helper
+  function seg(id, items, current, onPick) {
+    const g = document.getElementById(id); g.innerHTML = "";
+    for (const [val, label] of items) {
+      const b = el("button", { type: "button", "aria-pressed": String(val === current) }, label);
+      b.addEventListener("click", () => { g.querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", "false")); b.setAttribute("aria-pressed", "true"); onPick(val); });
+      g.appendChild(b);
+    }
+  }
+
+  // ---------------------------------------------------------------- objects table
+  let objDs = "arctic", objSort = "pen90";
+  const OBJ_COLS = [["object", "Object", 0], ["frames", "Hand-frames", 0], ["contact", "Contact %", 1], ["pen50", "Pen. median (mm)", 2],
+    ["pen90", "Pen. p90 (mm)", 2], ["gt5", "> 5 mm %", 1], ["jit50", "Jitter median (mm)", 2], ["jit95", "Jitter p95 (mm)", 2], ["clean", "Sim-clean %", 2]];
+  function objects() {
+    const rows = [...(S.objects[objDs] || [])].sort((a, b) => objSort === "object" ? a.object.localeCompare(b.object) : (b[objSort] ?? -1) - (a[objSort] ?? -1));
+    const maxP = Math.max(1, ...rows.map((r) => r.pen90 || 0));
+    let h = "<thead><tr>" + OBJ_COLS.map(([k, l]) => `<th><button type="button" data-k="${k}" ${k === objSort ? 'aria-sort="descending"' : ""}>${l}</button></th>`).join("") + "</tr></thead><tbody>";
+    for (const r of rows) {
+      h += "<tr>" + OBJ_COLS.map(([k, , dp]) => {
+        if (k === "object") return `<td>${r.object}</td>`;
+        if (k === "pen90") return `<td><div class="bar-cell"><span>${fmt(r[k], 2)}</span><span class="bar" style="width:${(70 * (r[k] || 0) / maxP).toFixed(1)}px"></span></div></td>`;
+        if (k === "frames") return `<td>${r[k].toLocaleString()}</td>`;
+        return `<td>${fmt(r[k], dp)}</td>`;
+      }).join("") + "</tr>";
+    }
+    const t = document.getElementById("objects"); t.innerHTML = h + "</tbody>";
+    t.querySelectorAll("th button").forEach((b) => b.addEventListener("click", () => { objSort = b.dataset.k; objects(); }));
+  }
+
+  // ---------------------------------------------------------------- sequence explorer
+  let seqDs = "arctic", seqName = null, seqHand = null;
+  function seqList() {
+    const all = SER[seqDs] || {};
+    const q = document.getElementById("seq-filter").value.trim().toLowerCase();
+    const names = Object.keys(all).filter((n) => !q || n.toLowerCase().includes(q) || all[n].obj.toLowerCase().includes(q));
+    const score = (n) => Math.max(...Object.values(all[n].hands).map((h) => h.pen50 ?? -1));
+    names.sort((a, b) => score(b) - score(a));
+    const sel = document.getElementById("seq-select"); sel.innerHTML = "";
+    for (const n of names.slice(0, 600)) {
+      const o = el("option", { value: n }); o.textContent = `${n}  ·  median ${fmt(score(n))} mm`; sel.appendChild(o);
+    }
+    if (!names.includes(seqName)) seqName = names[0] || null;
+    sel.value = seqName || "";
+    seqDraw();
+  }
+  function seqDraw() {
+    const meta = document.getElementById("seq-meta");
+    const boxes = ["seq-pen", "seq-jit"].map((id) => document.getElementById(id));
+    boxes.forEach((b) => b.querySelectorAll("svg,.empty").forEach((n) => n.remove()));
+    const s = seqName && SER[seqDs] && SER[seqDs][seqName];
+    if (!s) { meta.innerHTML = ""; boxes[0].appendChild(el("div", { class: "empty" }, "No sequence matches the filter. Clear it to see all sequences.")); return; }
+    const hands = Object.keys(s.hands);
+    if (!hands.includes(seqHand)) seqHand = hands[0];
+    seg("hand-tabs", hands.map((h) => [h, h === "left" ? "Left hand" : "Right hand"]), seqHand, (h) => { seqHand = h; seqDraw(); });
+    const d = s.hands[seqHand];
+    meta.innerHTML = `<span><b>Object</b> ${s.obj}</span><span><b>Frames</b> ${d.n.toLocaleString()}</span><span><b>Contact median penetration</b> ${fmt(d.pen50)} mm</span><span><b>Contact median jitter</b> ${fmt(d.jit50, 2)} mm</span>`;
+    seriesChart(boxes[0], d, "p", "mm", COLOR[seqDs], true);
+    seriesChart(boxes[1], d, "j", "mm", COLOR[seqDs], false);
+  }
+  function seriesChart(box, d, key, unit, colorVar, area) {
+    const W = 1040, H = 170, m = { l: 44, r: 12, t: 8, b: 26 };
+    const vals = d[key].map((v) => v ?? NaN);
+    const finite = vals.filter((v) => Number.isFinite(v));
+    if (!finite.length) { box.appendChild(el("div", { class: "empty" }, "Not evaluable: this clip is sampled too sparsely or has too few consecutive frames.")); return; }
+    const ymax = Math.max(1, ...finite) * 1.08;
+    const n = vals.length;
+    const X = (i) => m.l + (n <= 1 ? 0 : i / (n - 1)) * (W - m.l - m.r);
+    const Y = (v) => m.t + (1 - v / ymax) * (H - m.t - m.b);
+    const svg = sv("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": key === "p" ? "Penetration over time" : "Jitter over time" });
+    const bw = (W - m.l - m.r) / Math.max(1, n - 1);
+    d.c.forEach((c, i) => { if (c >= 0.5) svg.appendChild(sv("rect", { x: X(i) - bw / 2, y: m.t, width: bw, height: H - m.t - m.b, fill: css("--accent-soft") })); });
+    const nt = 4; for (let k = 0; k <= nt; k++) {
+      const v = (ymax / 1.08) * k / nt; const y = Y(v);
+      svg.appendChild(sv("line", { x1: m.l, x2: W - m.r, y1: y, y2: y, stroke: css("--rule"), "stroke-width": 1 }));
+      const tx = sv("text", { x: m.l - 8, y: y + 4, "text-anchor": "end", fill: css("--muted"), "font-size": 11, "font-family": css("--f-mono") }); tx.textContent = v.toFixed(v < 10 ? 1 : 0); svg.appendChild(tx);
+    }
+    [0, Math.floor((n - 1) / 2), n - 1].forEach((i) => { const tx = sv("text", { x: X(i), y: H - 6, "text-anchor": i === 0 ? "start" : i === n - 1 ? "end" : "middle", fill: css("--muted"), "font-size": 11, "font-family": css("--f-mono") }); tx.textContent = "frame " + d.f[i]; svg.appendChild(tx); });
+    let path = "", pen = false;
+    vals.forEach((v, i) => { if (!Number.isFinite(v)) { pen = false; return; } path += (pen ? "L" : "M") + X(i).toFixed(1) + "," + Y(v).toFixed(1); pen = true; });
+    if (area) {
+      let ap = ""; vals.forEach((v, i) => { ap += (i ? "L" : "M") + X(i).toFixed(1) + "," + Y(Number.isFinite(v) ? v : 0).toFixed(1); });
+      ap += `L${X(n - 1).toFixed(1)},${Y(0)}L${X(0).toFixed(1)},${Y(0)}Z`;
+      svg.appendChild(sv("path", { d: ap, fill: css(colorVar), "fill-opacity": 0.18 }));
+    }
+    svg.appendChild(sv("path", { d: path, fill: "none", stroke: css(colorVar), "stroke-width": 2, "stroke-linejoin": "round" }));
+    svg.appendChild(sv("line", { x1: m.l, x2: W - m.r, y1: Y(0), y2: Y(0), stroke: css("--axis"), "stroke-width": 1 }));
+    const cross = sv("line", { y1: m.t, y2: Y(0), stroke: css("--ink-2"), "stroke-width": 1, visibility: "hidden" });
+    const dot = sv("circle", { r: 4, fill: css(colorVar), stroke: css("--panel"), "stroke-width": 2, visibility: "hidden" });
+    svg.appendChild(cross); svg.appendChild(dot);
+    const hit = sv("rect", { x: m.l, y: m.t, width: W - m.l - m.r, height: H - m.t - m.b, fill: "transparent" });
+    svg.appendChild(hit); box.appendChild(svg);
+    const tip = tipFor(box);
+    hit.addEventListener("pointermove", (ev) => {
+      const r = svg.getBoundingClientRect(); const sx = (ev.clientX - r.left) * (W / r.width);
+      const i = Math.max(0, Math.min(n - 1, Math.round(((sx - m.l) / (W - m.l - m.r)) * (n - 1))));
+      cross.setAttribute("x1", X(i)); cross.setAttribute("x2", X(i)); cross.setAttribute("visibility", "visible");
+      if (Number.isFinite(vals[i])) { dot.setAttribute("cx", X(i)); dot.setAttribute("cy", Y(vals[i])); dot.setAttribute("visibility", "visible"); } else dot.setAttribute("visibility", "hidden");
+      const br = box.getBoundingClientRect();
+      tip.show(ev.clientX - br.left, ev.clientY - br.top, `<div class="h">from frame ${d.f[i]}</div><div class="r"><span>${key === "p" ? "Max penetration" : "Jitter"}</span><span>${fmt(vals[i], 2)} ${unit}</span></div><div class="r"><span>In contact</span><span>${Math.round(d.c[i] * 100)}%</span></div>`);
+    });
+    hit.addEventListener("pointerleave", () => { tip.hide(); cross.setAttribute("visibility", "hidden"); dot.setAttribute("visibility", "hidden"); });
+  }
+
+  // ---------------------------------------------------------------- 3D inspector
+  let renderer, scene, camera, controls, handMesh, objMesh, objWire, current = 0;
+  function sdColor(s) {
+    const lerp = (a, b, t) => a.map((x, i) => x + (b[i] - x) * t);
+    const rgb = (v) => { const c = new THREE.Color(css(v)); return [c.r, c.g, c.b]; };
+    const mid = rgb("--mid");
+    if (s < 0) return lerp(mid, rgb("--inside"), Math.min(1, -s / 10));
+    return lerp(mid, rgb("--outside"), Math.min(1, s / 10));
+  }
+  function init3d() {
+    const canvas = document.getElementById("three");
+    if (!window.THREE || !THREE.OrbitControls) { canvas.replaceWith(el("div", { class: "empty" }, "The 3D library did not load, so the inspector is unavailable. Reload the page to try again.")); return false; }
+    renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+    scene = new THREE.Scene();
+    camera = new THREE.PerspectiveCamera(40, 4 / 3, 1, 5000);
+    controls = new THREE.OrbitControls(camera, canvas);
+    controls.enableDamping = true;
+    scene.add(new THREE.HemisphereLight(0xffffff, 0x445566, 0.9));
+    const dl = new THREE.DirectionalLight(0xffffff, 0.6); dl.position.set(1, 2, 3); camera.add(dl); scene.add(camera);
+    const resize = () => { const w = canvas.clientWidth, h = canvas.clientHeight; if (!w || !h) return; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); };
+    new ResizeObserver(resize).observe(canvas); resize();
+    const loop = () => { controls.update(); renderer.render(scene, camera); requestAnimationFrame(loop); }; loop();
+    document.getElementById("xray").addEventListener("change", styleObj);
+    document.getElementById("wire").addEventListener("change", styleObj);
+    return true;
+  }
+  function styleObj() {
+    if (!objMesh) return;
+    const xr = document.getElementById("xray").checked;
+    objMesh.material.transparent = xr; objMesh.material.opacity = xr ? 0.28 : 1; objMesh.material.depthWrite = !xr;
+    objMesh.material.needsUpdate = true;
+    objWire.visible = document.getElementById("wire").checked;
+  }
+  function geo(v, f) {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.Float32BufferAttribute(v, 3));
+    g.setIndex(f); g.computeVertexNormals(); return g;
+  }
+  async function showFrame(i) {
+    current = i;
+    const fr = F3.frames[i];
+    if (!F3.objects[fr.obj_key] && F3.obj_files && F3.obj_files[fr.obj_key]) {
+      F3.objects[fr.obj_key] = await getJSON("data/" + F3.obj_files[fr.obj_key]);
+      if (current !== i) return;
+    }
+    document.querySelectorAll(".frame-btn").forEach((b) => b.setAttribute("aria-pressed", String(+b.dataset.i === i)));
+    [handMesh, objMesh, objWire].forEach((m) => { if (m) { scene.remove(m); m.geometry.dispose(); m.material.dispose(); } });
+    const hg = geo(fr.hand_v, fr.faces ? F3.hand_faces[fr.faces] : F3.mano_faces);
+    const cols = new Float32Array(fr.sd.length * 3);
+    fr.sd.forEach((s, k) => cols.set(sdColor(s), k * 3));
+    hg.setAttribute("color", new THREE.BufferAttribute(cols, 3));
+    handMesh = new THREE.Mesh(hg, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.7, side: THREE.DoubleSide }));
+    const ob = F3.objects[fr.obj_key];
+    const og = geo(ob.v, ob.f);
+    objMesh = new THREE.Mesh(og, new THREE.MeshStandardMaterial({ color: new THREE.Color(css("--axis")), roughness: 0.9, side: THREE.DoubleSide }));
+    objWire = new THREE.LineSegments(new THREE.WireframeGeometry(og), new THREE.LineBasicMaterial({ color: new THREE.Color(css("--muted")), transparent: true, opacity: 0.35 }));
+    scene.add(objMesh); scene.add(objWire); scene.add(handMesh);
+    handMesh.renderOrder = 1; objMesh.renderOrder = 2;
+    styleObj();
+    hg.computeBoundingSphere();
+    const c = hg.boundingSphere.center, r = Math.max(60, hg.boundingSphere.radius * 1.6);
+    controls.target.copy(c);
+    camera.position.set(c.x + r * 1.6, c.y + r * 0.9, c.z + r * 1.6);
+    camera.near = r / 50; camera.far = r * 60; camera.updateProjectionMatrix();
+    const kv = document.getElementById("frame-kv");
+    kv.innerHTML = [["Dataset", NAMES[fr.dataset]], ["Sequence", fr.seq], ["Frame", fr.frame], ["Hand", fr.hand], ["Object", fr.object],
+      ["Max penetration", fmt(fr.pen_max, 1) + " mm"], ["Penetrating volume", fmt(fr.pen_vol, 0) + " mm³"], ["Points inside", fr.n_pen.toLocaleString()],
+      ["Jitter vs object", fr.jit === null ? "not evaluable" : fmt(fr.jit, 2) + " mm"]].map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("");
+  }
+  function frameList() {
+    const G = document.getElementById("frame-groups"); G.innerHTML = "";
+    const by = {};
+    F3.frames.forEach((f, i) => (by[f.dataset] ??= []).push([f, i]));
+    for (const d of ORDER.filter((d) => by[d])) {
+      const g = el("div", { class: "frame-group" });
+      g.appendChild(el("div", { class: "eyebrow" }, `<span class="swatch" style="background:var(${COLOR[d]})"></span>${NAMES[d]}`));
+      const row = el("div", { class: "frame-btns" });
+      for (const [f, i] of by[d]) {
+        const b = el("button", { type: "button", class: "frame-btn", "data-i": i, "aria-pressed": "false", title: `${f.seq} frame ${f.frame}` }, `${f.label} · ${fmt(f.pen_max, 1)}`);
+        b.addEventListener("click", () => showFrame(i)); row.appendChild(b);
+      }
+      g.appendChild(row); G.appendChild(g);
+    }
+  }
+
+  // ---------------------------------------------------------------- parts
+  let P = null, partMetric = "gt2", partDs = null, heatView = "palmar";
+  const PART_LABEL = { palm: "Palm", thumb: "Thumb", index: "Index", middle: "Middle", ring: "Ring", pinky: "Pinky", palmar: "Palmar side (all parts)", dorsal: "Back of hand (all parts)" };
+  const METRICS = [["gt2", "> 2 mm (% frames)", 1], ["gt5", "> 5 mm (% frames)", 1], ["p50", "Median depth near object (mm)", 2], ["vol_share", "Share of volume (%)", 1]];
+  function heatCell(v, max, dp) {
+    const a = v === null || v === undefined ? 0 : Math.min(1, v / (max || 1)) * 0.55;
+    return `<td class="heat" style="--a:${a.toFixed(3)}"><span>${fmt(v, dp)}</span></td>`;
+  }
+  function partMatrix() {
+    const ds = ORDER.filter((d) => P.by_part[d]);
+    const dp = METRICS.find((m) => m[0] === partMetric)[2];
+    const rows = [["Parts", P.parts.map((p) => [p, (d) => P.by_part[d][p]])], ["Sides", P.sides.map((s) => [s, (d) => P.by_side[d][s]])]];
+    let max = 0;
+    rows.forEach(([, rr]) => rr.forEach(([, g]) => ds.forEach((d) => { const v = g(d)[partMetric]; if (v > max) max = v; })));
+    let h = "<thead><tr><th>Region</th>" + ds.map((d) => `<th><span class="swatch" style="background:var(${COLOR[d]})"></span>${NAMES[d]}</th>`).join("") + "</tr></thead><tbody>";
+    for (const [grp, rr] of rows) {
+      h += `<tr class="group"><td colspan="${ds.length + 1}">${grp}</td></tr>`;
+      for (const [k, g] of rr) h += `<tr><td>${PART_LABEL[k]}</td>` + ds.map((d) => heatCell(g(d)[partMetric], max, dp)).join("") + "</tr>";
+    }
+    document.getElementById("part-matrix").innerHTML = h + "</tbody>";
+  }
+  function objPart() {
+    const t = document.getElementById("obj-part");
+    const op = P.object_part[partDs];
+    if (!op) { t.innerHTML = `<tbody><tr><td class="empty">No object labels for this dataset.</td></tr></tbody>`; return; }
+    const objs = Object.keys(op).sort((a, b) => Math.max(...P.parts.map((p) => op[b][p] ?? 0)) - Math.max(...P.parts.map((p) => op[a][p] ?? 0)));
+    const max = Math.max(1, ...objs.flatMap((o) => P.parts.map((p) => op[o][p] ?? 0)));
+    let h = "<thead><tr><th>Object</th>" + P.parts.map((p) => `<th>${PART_LABEL[p]}</th>`).join("") + "<th>Frames</th></tr></thead><tbody>";
+    for (const o of objs) h += `<tr><td>${o}</td>` + P.parts.map((p) => heatCell(op[o][p], max, 1)).join("") + `<td>${op[o]._n.toLocaleString()}</td></tr>`;
+    t.innerHTML = h + "</tbody>";
+  }
+  let hR, hScene, hCam, hCtl, hMesh;
+  function heatInit() {
+    const canvas = document.getElementById("heat3d");
+    if (!window.THREE || !THREE.OrbitControls) { canvas.replaceWith(el("div", { class: "empty" }, "The 3D library did not load, so the hand heat map is unavailable.")); return false; }
+    hR = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    hR.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+    hScene = new THREE.Scene(); hCam = new THREE.PerspectiveCamera(35, 1, 1, 5000);
+    hCtl = new THREE.OrbitControls(hCam, canvas); hCtl.enableDamping = true;
+    hScene.add(new THREE.HemisphereLight(0xffffff, 0x445566, 0.95));
+    const dl = new THREE.DirectionalLight(0xffffff, 0.5); dl.position.set(0, 1, 2); hCam.add(dl); hScene.add(hCam);
+    const T = P.template;
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.Float32BufferAttribute(T.v, 3)); g.setIndex(T.f); g.computeVertexNormals(); g.computeBoundingSphere();
+    g.setAttribute("color", new THREE.BufferAttribute(new Float32Array(T.v.length), 3));
+    hMesh = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.75, side: THREE.DoubleSide }));
+    hScene.add(hMesh);
+    const resize = () => { const w = canvas.clientWidth, h = canvas.clientHeight; if (!w || !h) return; hR.setSize(w, h, false); hCam.aspect = w / h; hCam.updateProjectionMatrix(); };
+    new ResizeObserver(resize).observe(canvas); resize();
+    const loop = () => { hCtl.update(); hR.render(hScene, hCam); requestAnimationFrame(loop); }; loop();
+    return true;
+  }
+  function heatPaint() {
+    if (!hMesh) return;
+    const v = P.vertex[partDs];
+    const rates = v ? v.pen2 : P.template.part.map(() => 0);
+    const max = Math.max(1, ...rates);
+    document.getElementById("heat-max").textContent = max.toFixed(0) + "%";
+    const mid = new THREE.Color(css("--mid")), hot = new THREE.Color(css("--inside"));
+    const col = hMesh.geometry.getAttribute("color");
+    rates.forEach((r, i) => { const c = mid.clone().lerp(hot, Math.min(1, r / max)); col.setXYZ(i, c.r, c.g, c.b); });
+    col.needsUpdate = true;
+  }
+  function heatCamera() {
+    if (!hMesh) return;
+    const bs = hMesh.geometry.boundingSphere, d = P.template.palmar_dir, s = heatView === "palmar" ? 1 : -1, r = bs.radius * 3.2;
+    hCtl.target.copy(bs.center);
+    hCam.position.set(bs.center.x + s * d[0] * r, bs.center.y + s * d[1] * r, bs.center.z + s * d[2] * r);
+    hCam.near = r / 50; hCam.far = r * 20; hCam.updateProjectionMatrix();
+  }
+  function partsDraw() { partMatrix(); objPart(); heatPaint(); }
+  function partsBoot() {
+    seg("part-metric", METRICS.map(([k, l]) => [k, l]), partMetric, (k) => { partMetric = k; partMatrix(); });
+    const ds = ORDER.filter((d) => P.by_part[d]); partDs = ds[0];
+    seg("part-ds", ds.map((d) => [d, NAMES[d].replace("EPIC-Contact ", "EPIC ")]), partDs, (d) => { partDs = d; objPart(); heatPaint(); });
+    seg("heat-view", [["palmar", "Palm side"], ["dorsal", "Back of hand"]], heatView, (v) => { heatView = v; heatCamera(); });
+    partsDraw();
+    if (heatInit()) { heatPaint(); heatCamera(); }
+  }
+
+  // ---------------------------------------------------------------- boot
+  async function getJSON(p) { const r = await fetch(p); if (!r.ok) throw new Error(p + " " + r.status); return r.json(); }
+  function drawAll() {
+    overall(); cdfLegend();
+    cdfChart("cdf-pen", "pen", 20, [1, 2, 5], "mm");
+    cdfChart("cdf-jit", "jit", 5, [0.5, 1], "mm");
+  }
+  (async () => {
+    try { S = await getJSON("data/summary.json"); }
+    catch (e) { document.querySelector(".wrap").appendChild(el("p", { class: "empty" }, "The results data could not be loaded. Reload the page to try again.")); return; }
+    const missing = ORDER.filter((d) => !S.overall[d]);
+    if (missing.length) {
+      document.getElementById("pending").hidden = false;
+      document.getElementById("pending-text").textContent = `${missing.map((d) => NAMES[d]).join(", ")} is still being computed and will appear here when its run finishes.`;
+    }
+    drawAll();
+    const have = ORDER.filter((d) => S.objects[d]);
+    objDs = have[0];
+    seg("obj-tabs", have.map((d) => [d, NAMES[d].replace("EPIC-Contact ", "EPIC ")]), objDs, (d) => { objDs = d; objects(); });
+    objects();
+    try {
+      SER = await getJSON("data/series.json");
+      const sd = ORDER.filter((d) => SER[d]); seqDs = sd[0];
+      seg("seq-tabs", sd.map((d) => [d, NAMES[d].replace("EPIC-Contact ", "EPIC ")]), seqDs, (d) => { seqDs = d; seqName = null; seqList(); });
+      document.getElementById("seq-filter").addEventListener("input", seqList);
+      document.getElementById("seq-select").addEventListener("change", (e) => { seqName = e.target.value; seqDraw(); });
+      seqList();
+    } catch (e) { document.getElementById("seq-pen").appendChild(el("div", { class: "empty" }, "Sequence data could not be loaded. Reload the page to try again.")); }
+    try {
+      F3 = await getJSON("data/frames3d.json");
+      F3.objects = F3.objects || {};
+      if (init3d()) { frameList(); const w = F3.frames.findIndex((f) => f.label === "median"); showFrame(w < 0 ? 0 : w); }
+    } catch (e) { document.getElementById("frame-groups").appendChild(el("div", { class: "empty" }, "3D frames could not be loaded. Reload the page to try again.")); }
+    try { P = await getJSON("data/parts.json"); partsBoot(); }
+    catch (e) {
+      const sec = document.getElementById("h-parts").closest("section");
+      sec.querySelectorAll(".controls,.scroll,.heatmap3d").forEach((n) => { n.hidden = true; });
+      sec.appendChild(el("div", { class: "empty" }, "Per-part results are still being computed and will appear here when that run finishes."));
+    }
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const redraw = () => { drawAll(); if (SER) seqDraw(); if (F3 && renderer) showFrame(current); if (P && P.by_part) partsDraw(); };
+    mq.addEventListener("change", redraw);
+    new MutationObserver(redraw).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+  })();
+})();
+</script>

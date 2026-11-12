@@ -1,0 +1,14 @@
+# CPU environment for make_eval_set.py, fetch_arctic_images.py, eval_arctic.py, selftest.py
+# and scripts/download_arctic.py. Versions validated locally with Python 3.12.
+numpy==2.5.4
+scipy==1.18.1
+pandas==3.1.1
+pyarrow==26.0.1
+trimesh==5.2.0
+libigl==2.6.3
+tabulate==0.10.0
+requests==2.34.2
+loguru==0.7.3
+tqdm==4.70.1
+opencv-python-headless
+huggingface_hub

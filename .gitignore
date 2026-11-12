@@ -1,0 +1,11 @@
+# data and downloads stay out of git (fetched on each machine)
+data/
+logs/
+tools/
+.venv*/
+__pycache__/
+results/**/*.parquet
+results/**/*.npz
+baselines/preds*/
+viewer/data/
+trial_images/

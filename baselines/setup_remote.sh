@@ -41,8 +41,13 @@ if ! done_ hamer; then
   [ -d "$REPOS/hamer" ] || git clone -q --recursive https://github.com/geopavlakos/hamer "$REPOS/hamer"
   [ -d "$ENVS/hamer" ] || conda create -y -q -p "$ENVS/hamer" python=3.10
   conda activate "$ENVS/hamer"
-  pip install -q torch torchvision --index-url https://download.pytorch.org/whl/cu118
-  (cd "$REPOS/hamer" && pip install -q -e .[all] && pip install -q -v -e third-party/ViTPose && bash fetch_demo_data.sh)
+  # torch built for CUDA 12.4 = the image's nvcc, so detectron2's CUDA ops compile; build without isolation so
+  # setup.py sees torch; numpy<1.24 for chumpy (np.bool etc.)
+  pip install -q torch==2.4.1 torchvision==0.19.1 --index-url https://download.pytorch.org/whl/cu124
+  pip install -q "numpy<1.24" setuptools wheel ninja
+  export TORCH_CUDA_ARCH_LIST="8.0;8.6;8.9"
+  python -c "import detectron2" 2>/dev/null || pip install -q --no-build-isolation 'git+https://github.com/facebookresearch/detectron2.git'
+  (cd "$REPOS/hamer" && pip install -q --no-build-isolation -e .[all] && pip install -q --no-build-isolation -v -e third-party/ViTPose      && pip install -q "numpy<1.24" && bash fetch_demo_data.sh)
   mkdir -p "$REPOS/hamer/_DATA/data/mano" && cp "$MANO_DIR/MANO_RIGHT.pkl" "$REPOS/hamer/_DATA/data/mano/"
   conda deactivate
   ok hamer
@@ -53,8 +58,9 @@ if ! done_ wilor; then
   [ -d "$REPOS/WiLoR" ] || git clone -q https://github.com/rolpotamias/WiLoR "$REPOS/WiLoR"
   [ -d "$ENVS/wilor" ] || conda create -y -q -p "$ENVS/wilor" python=3.10
   conda activate "$ENVS/wilor"
-  pip install -q torch torchvision --index-url https://download.pytorch.org/whl/cu121
-  (cd "$REPOS/WiLoR" && pip install -q -r requirements.txt)
+  pip install -q torch==2.4.1 torchvision==0.19.1 --index-url https://download.pytorch.org/whl/cu124
+  pip install -q "numpy<1.24" setuptools wheel ninja
+  (cd "$REPOS/WiLoR" && pip install -q --no-build-isolation -r requirements.txt && pip install -q "numpy<1.24")
   W=https://huggingface.co/spaces/rolpotamias/WiLoR/resolve/main/pretrained_models
   for f in detector.pt wilor_final.ckpt; do
     [ -f "$REPOS/WiLoR/pretrained_models/$f" ] || wget -q -P "$REPOS/WiLoR/pretrained_models" "$W/$f"

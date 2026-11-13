@@ -48,7 +48,7 @@ if ! done_ hamer; then
   export TORCH_CUDA_ARCH_LIST="8.0;8.6;8.9"
   python -c "import detectron2" 2>/dev/null || pip install -q --no-build-isolation 'git+https://github.com/facebookresearch/detectron2.git'
   (cd "$REPOS/hamer" && pip install -q --no-build-isolation -e .[all] && pip install -q --no-build-isolation -v -e third-party/ViTPose \
-     && pip install -q "numpy<1.24")
+     && pip install -q "numpy<1.24" "pyglet<2" "opencv-python<4.11" "scikit-image<0.25")   # chumpy needs numpy<1.24; pyrender needs pyglet<2
   # demo weights (hamer.ckpt + ViTPose); the network volume refuses chown, so extract without restoring owners
   if [ ! -f "$REPOS/hamer/_DATA/hamer_ckpts/checkpoints/hamer.ckpt" ] || [ ! -f "$REPOS/hamer/_DATA/vitpose_ckpts/vitpose+_huge/wholebody.pth" ]; then
     (cd "$REPOS/hamer" && TAR_OPTIONS=--no-same-owner bash fetch_demo_data.sh)
@@ -65,7 +65,7 @@ if ! done_ wilor; then
   conda activate "$ENVS/wilor"
   pip install -q torch==2.4.1 torchvision==0.19.1 --index-url https://download.pytorch.org/whl/cu124
   pip install -q "numpy<1.24" "setuptools<70" wheel ninja
-  (cd "$REPOS/WiLoR" && pip install -q --no-build-isolation -r requirements.txt && pip install -q "numpy<1.24")
+  (cd "$REPOS/WiLoR" && pip install -q --no-build-isolation -r requirements.txt && pip install -q "numpy<1.24" "pyglet<2" "opencv-python<4.11" "scikit-image<0.25")
   W=https://huggingface.co/spaces/rolpotamias/WiLoR/resolve/main/pretrained_models
   for f in detector.pt wilor_final.ckpt; do
     [ -f "$REPOS/WiLoR/pretrained_models/$f" ] || wget -q -P "$REPOS/WiLoR/pretrained_models" "$W/$f"

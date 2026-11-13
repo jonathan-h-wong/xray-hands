@@ -44,7 +44,7 @@ if ! done_ hamer; then
   # torch built for CUDA 12.4 = the image's nvcc, so detectron2's CUDA ops compile; build without isolation so
   # setup.py sees torch; numpy<1.24 for chumpy (np.bool etc.)
   pip install -q torch==2.4.1 torchvision==0.19.1 --index-url https://download.pytorch.org/whl/cu124
-  pip install -q "numpy<1.24" setuptools wheel ninja
+  pip install -q "numpy<1.24" "setuptools<70" wheel ninja
   export TORCH_CUDA_ARCH_LIST="8.0;8.6;8.9"
   python -c "import detectron2" 2>/dev/null || pip install -q --no-build-isolation 'git+https://github.com/facebookresearch/detectron2.git'
   (cd "$REPOS/hamer" && pip install -q --no-build-isolation -e .[all] && pip install -q --no-build-isolation -v -e third-party/ViTPose      && pip install -q "numpy<1.24" && bash fetch_demo_data.sh)
@@ -59,7 +59,7 @@ if ! done_ wilor; then
   [ -d "$ENVS/wilor" ] || conda create -y -q -p "$ENVS/wilor" python=3.10
   conda activate "$ENVS/wilor"
   pip install -q torch==2.4.1 torchvision==0.19.1 --index-url https://download.pytorch.org/whl/cu124
-  pip install -q "numpy<1.24" setuptools wheel ninja
+  pip install -q "numpy<1.24" "setuptools<70" wheel ninja
   (cd "$REPOS/WiLoR" && pip install -q --no-build-isolation -r requirements.txt && pip install -q "numpy<1.24")
   W=https://huggingface.co/spaces/rolpotamias/WiLoR/resolve/main/pretrained_models
   for f in detector.pt wilor_final.ckpt; do

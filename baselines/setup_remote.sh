@@ -20,7 +20,9 @@ ok() { touch "$MARK/$1.ok"; echo "== $1 ok"; }
 
 if ! done_ eval; then
   echo "== CPU eval env + ARCTIC GT"
-  [ -d .venv-eval ] || python3 -m venv .venv-eval
+  # pins were validated on Python 3.12; the base image ships 3.11, so take 3.12 from conda (on the volume)
+  [ -x "$ENVS/py312/bin/python" ] || conda create -y -q -p "$ENVS/py312" python=3.12
+  [ -x .venv-eval/bin/python ] || "$ENVS/py312/bin/python" -m venv .venv-eval
   .venv-eval/bin/pip install -q -r baselines/requirements-eval.txt
   if [ ! -d "$ARCTIC_DATA/raw_seqs" ] || [ ! -f "$MANO_DIR/MANO_RIGHT.pkl" ]; then
     [ -d tools/arctic ] || git clone -q https://github.com/zc-alexfan/arctic tools/arctic

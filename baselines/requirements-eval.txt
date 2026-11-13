@@ -12,3 +12,4 @@ loguru==0.7.3
 tqdm==4.70.1
 opencv-python-headless
 huggingface_hub
+awscli

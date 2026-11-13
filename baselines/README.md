@@ -34,6 +34,20 @@ bash baselines/setup_remote.sh          # one time
 bash baselines/run_all.sh               # restartable
 ```
 
+### Parallel runs (one model per pod, shared network volume)
+
+Everything persistent lives on the volume (`baselines/pod_env.sh`): Miniforge, the three conda environments (`/workspace/envs`), the model repos and weights, `.venv-eval`, ARCTIC, predictions and results. Any pod that mounts the volume at `/workspace` can therefore run any job.
+
+```bash
+bash baselines/setup_remote.sh                                   # once, on one pod; restartable (markers in /workspace/.setup)
+RUN_ID=20261113_ego_s5 bash baselines/run_method.sh wilor         # pod A
+RUN_ID=20261113_ego_s5 bash baselines/run_method.sh hamer         # pod B
+RUN_ID=20261113_ego_s5 bash baselines/run_method.sh hopformer     # pod C
+RUN_ID=20261113_ego_s5 bash baselines/compare.sh                  # once all three have finished
+```
+
+Each job writes only its own folders (`baselines/preds/<run>/<method>`, `results/baselines/<run>_<method>*`, `logs/<run>/<method>.log`), so the pods never write the same file. Each job then uploads to `$S3_PREFIX/<run>/<method>/` (default `s3://xray-hands/eval/arctic`) when `AWS_ACCESS_KEY_ID` is set. A failed upload only warns; rerun it with `baselines/upload_run.sh <run> <method>`.
+
 To evaluate every frame, rebuild the eval set locally with `--stride 1`. Then rerun `fetch_arctic_images.py`.
 
 ## Metrics (`eval_arctic.py`)

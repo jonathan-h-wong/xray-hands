@@ -12,6 +12,7 @@ export IMAGE_KIND=${IMAGE_KIND:-cropped}
 export EVAL_SET=${EVAL_SET:-baselines/eval_sets/arctic_p2_val_v0_s5.npz}
 export S3_PREFIX=${S3_PREFIX:-s3://xray-hands/eval/arctic}
 export PYOPENGL_PLATFORM=egl
+export TAR_OPTIONS=--no-same-owner   # the network volume refuses chown
 export PIP_CACHE_DIR=$VOL/.cache/pip HF_HOME=$VOL/.cache/huggingface TORCH_HOME=$VOL/.cache/torch
 export HF_TOKEN=${HF_TOKEN:-}
 

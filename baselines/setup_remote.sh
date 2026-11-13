@@ -47,7 +47,12 @@ if ! done_ hamer; then
   pip install -q "numpy<1.24" "setuptools<70" wheel ninja
   export TORCH_CUDA_ARCH_LIST="8.0;8.6;8.9"
   python -c "import detectron2" 2>/dev/null || pip install -q --no-build-isolation 'git+https://github.com/facebookresearch/detectron2.git'
-  (cd "$REPOS/hamer" && pip install -q --no-build-isolation -e .[all] && pip install -q --no-build-isolation -v -e third-party/ViTPose      && pip install -q "numpy<1.24" && bash fetch_demo_data.sh)
+  (cd "$REPOS/hamer" && pip install -q --no-build-isolation -e .[all] && pip install -q --no-build-isolation -v -e third-party/ViTPose \
+     && pip install -q "numpy<1.24")
+  # demo weights (hamer.ckpt + ViTPose); the network volume refuses chown, so extract without restoring owners
+  if [ ! -f "$REPOS/hamer/_DATA/hamer_ckpts/checkpoints/hamer.ckpt" ] || [ ! -f "$REPOS/hamer/_DATA/vitpose_ckpts/vitpose+_huge/wholebody.pth" ]; then
+    (cd "$REPOS/hamer" && TAR_OPTIONS=--no-same-owner bash fetch_demo_data.sh)
+  fi
   mkdir -p "$REPOS/hamer/_DATA/data/mano" && cp "$MANO_DIR/MANO_RIGHT.pkl" "$REPOS/hamer/_DATA/data/mano/"
   conda deactivate
   ok hamer

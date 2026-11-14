@@ -44,7 +44,8 @@ class HaMeR:
         from hamer.models import DEFAULT_CHECKPOINT, download_models, load_hamer
         from hamer.utils.utils_detectron2 import DefaultPredictor_Lazy
         from vitpose_model import ViTPoseModel
-        download_models(CACHE_DIR_HAMER)
+        if not Path(DEFAULT_CHECKPOINT).exists():   # its own check looks for the tarball, not the weights
+            download_models(CACHE_DIR_HAMER)
         self.model, self.cfg = load_hamer(DEFAULT_CHECKPOINT)
         self.model = self.model.to(device).eval()
         if body_detector == "vitdet":

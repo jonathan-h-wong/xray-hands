@@ -16,8 +16,8 @@ export TAR_OPTIONS=--no-same-owner   # the network volume refuses chown
 export PIP_CACHE_DIR=$VOL/.cache/pip HF_HOME=$VOL/.cache/huggingface TORCH_HOME=$VOL/.cache/torch
 export HF_TOKEN=${HF_TOKEN:-}
 
-if ! dpkg -s libgl1 libegl1 libglu1-mesa >/dev/null 2>&1; then
-  (apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq libgl1 libegl1 libgles2 libglu1-mesa libglib2.0-0 \
+if ! dpkg -s libgl1 libegl1 libglu1-mesa libxrender1 >/dev/null 2>&1; then
+  (apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq libgl1 libegl1 libgles2 libglu1-mesa libglib2.0-0 libxrender1 libxext6 libx11-6 \
      build-essential git wget >/dev/null) || echo "WARN: apt install failed"
 fi
 if [ ! -x "$CONDA_ROOT/bin/conda" ]; then

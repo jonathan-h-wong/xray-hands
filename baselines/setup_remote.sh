@@ -88,7 +88,10 @@ if ! done_ hopformer; then
   python -c "import torch" 2>/dev/null || pip install -q torch==2.5.1 torchvision==0.20.1 --index-url https://download.pytorch.org/whl/cu124
   # chumpy's setup.py imports pip/numpy, so build without isolation against the pinned numpy
   pip install -q "setuptools<70" wheel numpy==1.22.4
-  pip install -q --no-build-isolation -r "$H/requirements.txt"
+  # requirements.txt reads like a conda export (e.g. opencv-python==4.11.0, PyPI only has 4.11.0.86):
+  # keep each version line but accept PyPI's build numbers (== -> ~=, i.e. same major.minor.patch series)
+  sed -E 's/==/~=/' "$H/requirements.txt" > "$H/requirements.relaxed.txt"
+  pip install -q --no-build-isolation -r "$H/requirements.relaxed.txt"
   python - <<'PY'
 # HOPformer README step 2: smplx must return 21 hand joints (uncomment the vertex_joint_selector line)
 import os, re, smplx

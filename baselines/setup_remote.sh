@@ -115,15 +115,27 @@ PY
   [ -f "$H/release_models/p2_arctic_ego_epoch8.ckpt" ] || python -c "
 from huggingface_hub import hf_hub_download
 hf_hub_download('Sid2697/HOPformer', 'p2_arctic_ego_epoch8.ckpt', local_dir='$H/release_models')"
-  pip install -q git+https://github.com/microsoft/MoGe.git      # MoGe-2, estimated-intrinsics ablation
-  pip install -q numpy==1.23.5                                    # in case MoGe pulled a newer numpy
   conda deactivate
   ok hopformer
 fi
 
+if ! done_ moge; then
+  # MoGe-2 (estimated-intrinsics ablation) gets its own env: it requires numpy>=2 / trimesh>=4 and would pull
+  # torch 2.14 (CUDA 13), which breaks HOPformer's numpy 1.23.5 pins if installed into that env
+  echo "== MoGe-2 (github.com/microsoft/MoGe)"
+  [ -x "$ENVS/moge/bin/python" ] || conda create -y -q -p "$ENVS/moge" python=3.11
+  conda activate "$ENVS/moge"
+  python -c "import torch" 2>/dev/null || pip install -q torch==2.5.1 torchvision==0.20.1 --index-url https://download.pytorch.org/whl/cu124
+  pip install -q git+https://github.com/microsoft/MoGe.git "torch==2.5.1" "torchvision==0.20.1" \
+    --extra-index-url https://download.pytorch.org/whl/cu124
+  python -c "from moge.model.v2 import MoGeModel"
+  conda deactivate
+  ok moge
+fi
+
 if ! done_ moge_hand2d && nvidia-smi >/dev/null 2>&1; then
   echo "== MoGe-2 intrinsics for HaMeR/WiLoR (shared by both jobs)"
-  conda activate "$ENVS/hopformer"
+  conda activate "$ENVS/moge"
   python baselines/estimate_intrinsics_moge.py --eval-set "$EVAL_SET" --for hand2d --image-kind "$IMAGE_KIND"
   conda deactivate
   ok moge_hand2d

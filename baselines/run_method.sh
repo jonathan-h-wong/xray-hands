@@ -36,8 +36,10 @@ case "$METHOD" in
     conda activate "$ENVS/hopformer"
     DET=$REPOS/WiLoR/pretrained_models/detector.pt
     python baselines/infer_hopformer.py --repo "$REPOS/HOPformer" --eval-set "$EVAL_SET" --detector "$DET" --out "$PREDS"
+    conda activate "$ENVS/moge"
     python baselines/estimate_intrinsics_moge.py --eval-set "$EVAL_SET" --for hopformer --image-kind "$IMAGE_KIND" \
       --out "$PREDS/moge_hopformer.json"
+    conda deactivate
     python baselines/infer_hopformer.py --repo "$REPOS/HOPformer" --eval-set "$EVAL_SET" --detector "$DET" --out "$PREDS" \
       --tag hopformer_moge --intrinsics "moge:$PREDS/moge_hopformer.json"
     conda deactivate

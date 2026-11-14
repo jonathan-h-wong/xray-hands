@@ -85,7 +85,7 @@ if ! done_ hopformer; then
   # README option B (pip): environment.yml pins an ARM-only package (libopenvino-arm-cpu-plugin) and fails on x86
   [ -x "$ENVS/hopformer/bin/python" ] || conda create -y -q -p "$ENVS/hopformer" python=3.10.13
   conda activate "$ENVS/hopformer"
-  python -c "import torch" 2>/dev/null || pip install -q torch==2.5.1 torchvision==0.20.1 --index-url https://download.pytorch.org/whl/cu126
+  python -c "import torch" 2>/dev/null || pip install -q torch==2.5.1 torchvision==0.20.1 --index-url https://download.pytorch.org/whl/cu124
   pip install -q -r "$H/requirements.txt"
   python - <<'PY'
 # HOPformer README step 2: smplx must return 21 hand joints (uncomment the vertex_joint_selector line)

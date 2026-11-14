@@ -86,12 +86,11 @@ if ! done_ hopformer; then
   [ -x "$ENVS/hopformer/bin/python" ] || conda create -y -q -p "$ENVS/hopformer" python=3.10.13
   conda activate "$ENVS/hopformer"
   python -c "import torch" 2>/dev/null || pip install -q torch==2.5.1 torchvision==0.20.1 --index-url https://download.pytorch.org/whl/cu124
-  # chumpy's setup.py imports pip/numpy, so build without isolation against the pinned numpy
-  pip install -q "setuptools<70" wheel numpy==1.22.4
-  # requirements.txt reads like a conda export (e.g. opencv-python==4.11.0, PyPI only has 4.11.0.86):
-  # keep each version line but accept PyPI's build numbers (== -> ~=, i.e. same major.minor.patch series)
-  sed -E 's/==/~=/' "$H/requirements.txt" > "$H/requirements.relaxed.txt"
-  pip install -q --no-build-isolation -r "$H/requirements.relaxed.txt"
+  # requirements.txt is a 180-line conda export with pins that do not exist on PyPI or conflict, so install only
+  # what HOPformer's code imports, at its own versions. numpy 1.23.5 is the one version that satisfies chumpy (<1.24),
+  # ultralytics 8.3.105 (>=1.23) and scipy 1.13.1 (>=1.22.4). aitviewer (viewer only) is skipped.
+  pip install -q "setuptools<70" wheel numpy==1.23.5
+  pip install -q --no-build-isolation numpy==1.23.5 chumpy==0.70 easydict==1.13 einops==0.8.1 loguru==0.7.3     matplotlib==3.8.4 "opencv-python~=4.11.0" "opencv-python-headless~=4.11.0" PyOpenGL==3.1.0 pyrender==0.1.45     pytorch-lightning==2.0.0 torchmetrics==1.6.2 PyYAML==6.0.2 scikit-learn==1.7.2 scipy==1.13.1 smplx==0.1.28     timm==1.0.15 tqdm trimesh==3.9.21 ultralytics==8.3.105 yacs==0.1.8 scikit-image==0.22.0 hydra-core omegaconf     rich comet_ml wandb==0.19.8 braceexpand==0.1.7 webdataset==0.2.111 pillow "pyglet<2"
   python - <<'PY'
 # HOPformer README step 2: smplx must return 21 hand joints (uncomment the vertex_joint_selector line)
 import os, re, smplx
@@ -117,6 +116,7 @@ PY
 from huggingface_hub import hf_hub_download
 hf_hub_download('Sid2697/HOPformer', 'p2_arctic_ego_epoch8.ckpt', local_dir='$H/release_models')"
   pip install -q git+https://github.com/microsoft/MoGe.git      # MoGe-2, estimated-intrinsics ablation
+  pip install -q numpy==1.23.5                                    # in case MoGe pulled a newer numpy
   conda deactivate
   ok hopformer
 fi

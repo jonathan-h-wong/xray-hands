@@ -105,6 +105,8 @@ else:
     open(p, "w").write("\n".join(L))
     print("patched", p)
 PY
+  # repo ships common/___init___.py (3 underscores) -> namespace package, which inspect.getfile (wandb import) rejects
+  touch "$H/common/__init__.py"
   mkdir -p "$H/data/body_models/mano" "$H/pretrained_models/wilor" "$H/data/arctic_data" "$H/release_models"
   cp "$MANO_DIR"/MANO_{LEFT,RIGHT}.pkl "$H/data/body_models/mano/"
   [ -f "$H/data/body_models/mano/mano_mean_params.npz" ] || wget -q -P "$H/data/body_models/mano" \

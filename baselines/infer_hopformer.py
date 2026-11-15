@@ -117,7 +117,7 @@ def main():
     repo = Path(a.repo).expanduser().resolve()
     os.chdir(repo)
     sys.path.insert(0, str(repo))
-    sys.path.remove(str(HERE))
+    sys.path[:] = [p for p in sys.path if Path(p or ".").resolve() != HERE]  # incl. Python's own script-dir entry
     sys.modules.pop("common", None)  # our baselines/common.py (bound to C) shadows HOPformer's `common` package
     sys.argv =["infer", "--method", "transformer_sf", "--setup", "p2", "--dataset", "arctic",
                 "--backbone", "vit-g", "--decoder_depth", "12", "--precision", "32", "--load_ckpt", a.ckpt]

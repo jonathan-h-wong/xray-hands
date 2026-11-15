@@ -126,8 +126,11 @@ if ! done_ moge; then
   [ -x "$ENVS/moge/bin/python" ] || conda create -y -q -p "$ENVS/moge" python=3.11
   conda activate "$ENVS/moge"
   python -c "import torch" 2>/dev/null || pip install -q torch==2.5.1 torchvision==0.20.1 --index-url https://download.pytorch.org/whl/cu124
-  pip install -q git+https://github.com/microsoft/MoGe.git "torch==2.5.1" "torchvision==0.20.1" \
-    --extra-index-url https://download.pytorch.org/whl/cu124
+  # --no-deps: MoGe's flex-gemm (sparse v3 modules only) and gradio (demo app) need a newer torch; v2 needs neither
+  pip install -q --no-deps git+https://github.com/microsoft/MoGe.git
+  pip install -q "numpy>=2" opencv-python-headless "scipy>=1.8" pillow matplotlib "trimesh>=4.11" huggingface-hub \
+    requests tqdm click omegaconf \
+    "utils3d_moge @ git+https://github.com/EasternJournalist/utils3d-moge.git@62f09d58509485564e24d5d9f6aac9ee9ebc0c37"
   python -c "from moge.model.v2 import MoGeModel"
   conda deactivate
   ok moge

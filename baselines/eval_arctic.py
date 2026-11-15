@@ -42,6 +42,7 @@ import common as C  # noqa: E402
 
 _W = {}
 HAND2D = {"hamer", "wilor"}
+FINGERS = ["thumb", "index", "middle", "ring", "pinky"]   # order of C.TIPS = joints21[16:21]
 # class index order of HOPformer's object.class_logits (HOPformer common/object_tensors.py OBJECTS), not alphabetical
 ARCTIC_OBJECTS = ["capsulemachine", "box", "ketchup", "laptop", "microwave", "mixer", "notebook", "espressomachine",
                   "waffleiron", "scissors", "phone"]
@@ -76,6 +77,9 @@ def pose_metrics(Vp, Vg, side, K, scale):
     m["root_err"] = np.linalg.norm(rp[:, 0] - rg[:, 0], axis=-1)
     m["depth_err"] = rp[:, 0, 2] - rg[:, 0, 2]
     m["mpjpe_cam"] = np.linalg.norm(Jp - Jg, axis=-1).mean(1)
+    for i, f in enumerate(FINGERS):   # fingertip position error, camera frame and wrist-aligned
+        m[f"tip_{f}_err"] = np.linalg.norm(Jp[:, 16 + i] - Jg[:, 16 + i], axis=-1)
+        m[f"tip_{f}_err_ra"] = np.linalg.norm((Jp[:, 16 + i] - rp[:, 0]) - (Jg[:, 16 + i] - rg[:, 0]), axis=-1)
     m = {k: v * 1000.0 for k, v in m.items()}
     with np.errstate(invalid="ignore", divide="ignore"):
         m["kp2d_err_px"] = np.linalg.norm(C.project(K, Jp) - C.project(K, Jg), axis=-1).mean(1) / scale
@@ -88,8 +92,10 @@ def pen_cols(pp, V, side, T_co, ang, obj, prefix="", regions=True):
     return {prefix + k: v for k, v in keep.items()}
 
 
-def _init(intr):
+def _init(intr, sdf_pad=None):
     _W["pp"] = C.PartPenetration()
+    if sdf_pad:   # signed distances are clipped at +PAD_MM (30 by default); raise it to measure far-from-object hands
+        _W["pp"].hm.PAD_MM = float(sdf_pad)
     _W["moge"] = None if intr == "native" else json.load(open(intr.split(":", 1)[1]))
 
 
@@ -159,7 +165,7 @@ def evaluate_group(task):
                     pc = pen_cols(pp, Vp[ok], side, T_co[rows][ok], ang[rows][ok], obj)
                     cols.update({k2: full(v, np.nan if v.dtype != bool else False) for k2, v in pc.items()})
                     Vra = Vp[ok] - Jp[:, :1] + Jg[:, :1]
-                    pr = pen_cols(pp, Vra, side, T_co[rows][ok], ang[rows][ok], obj, "ra_", regions=False)
+                    pr = pen_cols(pp, Vra, side, T_co[rows][ok], ang[rows][ok], obj, "ra_")
                     cols.update({k2: full(v, np.nan if v.dtype != bool else False) for k2, v in pr.items()})
                     cols["contact_pred_gt"] = full(gt_contact[ok], False)
                     roots[(method, lift, side)] = (idx[rows][ok], Jp[:, 0], Jg[:, 0])
@@ -305,6 +311,8 @@ def main():
     ap.add_argument("--tag", default=None)
     ap.add_argument("--out", default=str(C.ROOT / "results/baselines"))
     ap.add_argument("--limit-seqs", type=int, default=0)
+    ap.add_argument("--sdf-pad", type=float, default=None,
+                    help="clip signed distances at this many mm instead of 30 (penetration/contact unaffected)")
     a = ap.parse_args()
 
     es, meta = C.load_eval_set(a.eval_set)
@@ -313,7 +321,7 @@ def main():
     tag = a.tag or (Path(a.eval_set).stem + ("" if a.intrinsics == "native" else "_moge"))
     print(f"{len(groups)} sequence/view groups, methods {a.methods}, intrinsics {a.intrinsics}", flush=True)
     t0, dfs, errs, worst = time.time(), [], [], 0.0
-    with Pool(a.workers, initializer=_init, initargs=(a.intrinsics,)) as pool:
+    with Pool(a.workers, initializer=_init, initargs=(a.intrinsics, a.sdf_pad)) as pool:
         for i, ((df, chk), err) in enumerate(pool.imap_unordered(_work, tasks)):
             if df is not None:
                 dfs.append(df)

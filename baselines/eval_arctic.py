@@ -92,8 +92,11 @@ def pen_cols(pp, V, side, T_co, ang, obj, prefix="", regions=True):
     return {prefix + k: v for k, v in keep.items()}
 
 
-def _init(intr, sdf_pad=None):
+def _init(intr, sdf_pad=None, export=None):
     _W["pp"] = C.PartPenetration()
+    _W["export"] = export
+    if export:
+        Path(export).mkdir(parents=True, exist_ok=True)
     if sdf_pad:   # signed distances are clipped at +PAD_MM (30 by default); raise it to measure far-from-object hands
         _W["pp"].hm.PAD_MM = float(sdf_pad)
     _W["moge"] = None if intr == "native" else json.load(open(intr.split(":", 1)[1]))
@@ -110,6 +113,7 @@ def evaluate_group(task):
     base = {"sid": sid, "seq": f"{sid}/{seq}", "view": view, "obj": obj, "frame": fr}
     dfs, checks = [], []
     roots = {}
+    exp = {} if _W.get("export") else None
     for side in C.SIDES:
         sel = es[f"sel_{side}"][idx]
         rows = np.where(sel)[0]
@@ -119,6 +123,12 @@ def evaluate_group(task):
         common = {k: (v[rows] if isinstance(v, np.ndarray) else v) for k, v in base.items()}
         common.update({"hand": side, "contact_es": es[f"contact_{side}"][idx][rows],
                        "pen_gt_es": es[f"pen_gt_{side}"][idx][rows]})
+        if exp is not None:
+            exp[f"{side}.eval_rows"], exp[f"{side}.frame"] = idx[rows], fr[rows]
+            exp[f"gt.{side}.verts"] = Vg.astype(np.float32)
+            exp[f"gt.{side}.joints"] = C.joints21(Vg, side).astype(np.float32)
+            exp[f"gt.obj_T_cam_mm.{side}"] = T_co[rows].astype(np.float32)
+            exp[f"gt.obj_radian.{side}"] = ang[rows].astype(np.float32)
         g = pen_cols(pp, Vg, side, T_co[rows], ang[rows], obj)
         checks.append(np.abs(g["pen_max_mm"] - common["pen_gt_es"]).max())
         dfs.append(pd.DataFrame({**common, "method": "gt", "lift": "-", "detected": True, **g}))
@@ -157,6 +167,16 @@ def evaluate_group(task):
                     variants.append((lift, Vm + t[:, None, :], C.scale_K(gt["cam"]["K"], scale), scale))
             for lift, Vp, K_eval, scale in variants:
                 ok = det & np.isfinite(Vp).all((1, 2))
+                if exp is not None:   # exactly the camera-frame hand every metric below is computed on
+                    Ve = np.where(ok[:, None, None], Vp, np.nan).astype(np.float32)
+                    exp[f"{method}.{lift}.{side}.verts"] = Ve
+                    exp[f"{method}.{lift}.{side}.joints"] = C.joints21(np.nan_to_num(Ve), side).astype(np.float32) \
+                        * np.where(ok, 1, np.nan)[:, None, None].astype(np.float32)
+                    exp[f"{method}.{lift}.{side}.score"] = z[f"{side}_score"][k].astype(np.float32)
+                    if hop:
+                        exp[f"{method}.{lift}.obj_rot.{side}"] = z["obj_rot"][k].astype(np.float32)
+                        exp[f"{method}.{lift}.obj_cam_t_m.{side}"] = z["obj_cam_t"][k].astype(np.float32)
+                        exp[f"{method}.{lift}.obj_radian.{side}"] = z["obj_radian"][k].astype(np.float32)
                 cols = {"method": method, "lift": lift, "detected": det, "score": z[f"{side}_score"][k]}
                 if ok.any():
                     pm, Jp, Jg = pose_metrics(Vp[ok], Vg[ok], side, K_eval, scale)
@@ -199,6 +219,11 @@ def evaluate_group(task):
             m = (df.method == method) & (df.lift == lift) & (df.hand == "right")
             fr_map = dict(zip(es["frame"][both], err))
             df.loc[m, "mrrpe_rl_mm"] = df.loc[m, "frame"].map(fr_map)
+    if exp:
+        exp.update(K_full=gt["cam"]["K"].astype(np.float32), obj=np.array(obj), sid=np.array(sid), seq=np.array(seq),
+                   view=np.array(int(view)), units=np.array("verts/joints: metres, camera frame of the view "
+                                                            "(undistorted); joints = 16 MANO + 5 tips; NaN = not detected"))
+        np.savez_compressed(Path(_W["export"]) / C.shard_name(sid, seq, view), **exp)
     return df, (max(checks) if checks else 0.0)
 
 
@@ -313,6 +338,8 @@ def main():
     ap.add_argument("--limit-seqs", type=int, default=0)
     ap.add_argument("--sdf-pad", type=float, default=None,
                     help="clip signed distances at this many mm instead of 30 (penetration/contact unaffected)")
+    ap.add_argument("--export", default=None,
+                    help="dir: also write per-sequence npz of the camera-frame GT and predicted hands (every lift)")
     a = ap.parse_args()
 
     es, meta = C.load_eval_set(a.eval_set)
@@ -321,7 +348,7 @@ def main():
     tag = a.tag or (Path(a.eval_set).stem + ("" if a.intrinsics == "native" else "_moge"))
     print(f"{len(groups)} sequence/view groups, methods {a.methods}, intrinsics {a.intrinsics}", flush=True)
     t0, dfs, errs, worst = time.time(), [], [], 0.0
-    with Pool(a.workers, initializer=_init, initargs=(a.intrinsics, a.sdf_pad)) as pool:
+    with Pool(a.workers, initializer=_init, initargs=(a.intrinsics, a.sdf_pad, a.export)) as pool:
         for i, ((df, chk), err) in enumerate(pool.imap_unordered(_work, tasks)):
             if df is not None:
                 dfs.append(df)

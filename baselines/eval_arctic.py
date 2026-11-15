@@ -42,8 +42,9 @@ import common as C  # noqa: E402
 
 _W = {}
 HAND2D = {"hamer", "wilor"}
-ARCTIC_OBJECTS = ["box", "capsulemachine", "espressomachine", "ketchup", "laptop", "microwave", "mixer",
-                  "notebook", "phone", "scissors", "waffleiron"]
+# class index order of HOPformer's object.class_logits (HOPformer common/object_tensors.py OBJECTS), not alphabetical
+ARCTIC_OBJECTS = ["capsulemachine", "box", "ketchup", "laptop", "microwave", "mixer", "notebook", "espressomachine",
+                  "waffleiron", "scissors", "phone"]
 
 
 def procrustes(X, Y):

@@ -126,6 +126,8 @@ def main():
     from common.data_utils import rgb_processing
     from src.parsers.parser import construct_args
     args = construct_args()
+    args.experiment = None  # as in HOPformer's scripts_method/extract_predicts.py (no Comet logger)
+    args.exp_key = "xxxxxxx"
     device = "cuda"
     wrapper = factory.fetch_model(args).to(device)
     wrapper.load_from_ckpt(a.ckpt)

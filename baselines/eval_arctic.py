@@ -14,6 +14,14 @@ Penetration (same definitions as analysis/run_partwise.py; mm, mm^3; 12 regions 
   self_pen_*              HOPformer only: predicted hand vs HOPformer's own predicted object
 Joint/hand-object relations: mrrpe_rl_mm (right wrist relative to left), HOPformer object errors
 (obj_t_err_mm, obj_rot_err_deg, obj_angle_err_deg, obj_cls_ok, mrrpe_ro_mm).
+Hand relative to the method's own object (methods that predict an object pose; mm):
+  rel_obj_t_mm            joint error after expressing both hands relative to their object's origin (translation)
+  rel_obj_frame_mm        joint error in each object's own frame (R^T (J - t)): adds the object rotation error
+  scene_scaled_mpjpe      joint error after one scale about the camera fitted to hand joints + object origin
+                          (what is left once the shared monocular depth/scale ambiguity is removed)
+  scene_scale             that scale (1 = metric depth right)
+Distance error to the object surface, vs the GT hand's own distance (all methods; needs --sdf-pad to be meaningful
+beyond 30 mm): sd_err_mm = min_sd_mm - GT min_sd_mm (GT object), self_sd_err_mm (own object).
 A "gt" method row holds the GT hand's own penetration on the same frames (reference; must reproduce the
 pen_gt stored in the eval set - checked and printed).
 
@@ -204,6 +212,8 @@ def evaluate_group(task):
                                                    ARCTIC_OBJECTS.index(obj)).astype(float))
                         cols["mrrpe_ro_mm"] = full(np.linalg.norm((Jp[:, 0] * 1000 - t) -
                                                                   (Jg[:, 0] * 1000 - Tg[:, :3, 3]), axis=-1))
+                        cols.update({k2: full(v) for k2, v in rel_obj_metrics(Jp * 1000, Jg * 1000, R, t,
+                                                                              Tg[:, :3, :3], Tg[:, :3, 3]).items()})
                 dfs.append(pd.DataFrame({**common, **cols}))
     df = pd.concat(dfs, ignore_index=True) if dfs else None
     if df is not None:   # right-relative-to-left wrist error where both hands are evaluated and detected
@@ -225,6 +235,34 @@ def evaluate_group(task):
                                                             "(undistorted); joints = 16 MANO + 5 tips; NaN = not detected"))
         np.savez_compressed(Path(_W["export"]) / C.shard_name(sid, seq, view), **exp)
     return df, (max(checks) if checks else 0.0)
+
+
+def rel_obj_metrics(Jp, Jg, R, t, Rg, tg):
+    """Hand joints (N,21,3 mm, camera) relative to predicted object (R, t mm) vs GT hand relative to GT object."""
+    rel_t = np.linalg.norm((Jp - t[:, None]) - (Jg - tg[:, None]), axis=-1).mean(1)
+    po = np.einsum("nji,nkj->nki", R, Jp - t[:, None])       # R^T (J - t)
+    go = np.einsum("nji,nkj->nki", Rg, Jg - tg[:, None])
+    P, G = np.concatenate([Jp, t[:, None]], 1), np.concatenate([Jg, tg[:, None]], 1)
+    s = (P * G).sum((1, 2)) / np.maximum((P * P).sum((1, 2)), 1e-9)
+    return {"rel_obj_t_mm": rel_t, "rel_obj_frame_mm": np.linalg.norm(po - go, axis=-1).mean(1),
+            "scene_scale": s, "scene_scaled_mpjpe": np.linalg.norm(s[:, None, None] * Jp - Jg, axis=-1).mean(1)}
+
+
+def add_gt_distance_errors(df):
+    """sd_err_mm / self_sd_err_mm: predicted hand-object surface distance minus the GT hand's, per hand-frame."""
+    key = ["sid", "seq", "view", "frame", "hand"]
+    g = df[df.method == "gt"].set_index(key)
+    gt_sd = g["min_sd_mm"].reindex(df.set_index(key).index).to_numpy()
+    df["sd_err_mm"] = np.where(df.method == "gt", np.nan, df["min_sd_mm"] - gt_sd)
+    if "self_min_sd_mm" in df:
+        df["self_sd_err_mm"] = df["self_min_sd_mm"] - gt_sd
+    return df
+
+
+def _f1(pred, gt):
+    tp = (pred & gt).sum()
+    p, r = tp / max(pred.sum(), 1), tp / max(gt.sum(), 1)
+    return 100 * p, 100 * r, (200 * p * r / (p + r) if p + r else 0.0)
 
 
 def _scatter(v, ok, fill):
@@ -264,8 +302,9 @@ def summarize(df, regions):
         r["contact %"] = 100 * d.contact.mean()
         if m != "gt":
             gc = d.contact_pred_gt.astype(bool)
-            r["contact recall %"] = 100 * (d.contact & gc).sum() / max(gc.sum(), 1)
-            r["contact precision %"] = 100 * (d.contact & gc).sum() / max(d.contact.sum(), 1)
+            r["contact precision %"], r["contact recall %"], r["contact F1 %"] = _f1(d.contact.astype(bool), gc)
+            if "sd_err_mm" in d:
+                r["|sd err| p50"] = d.sd_err_mm.abs().median()
             r["ra pen p50"] = d.ra_pen_max_mm.median()
             r["ra pen>5mm %"] = 100 * (d.ra_pen_max_mm > 5).mean()
         if "self_pen_max_mm" in d and d.self_pen_max_mm.notna().any():
@@ -274,6 +313,15 @@ def summarize(df, regions):
             r["obj rot err p50"] = d.obj_rot_err_deg.median()
             r["mrrpe_ro p50"] = d.mrrpe_ro_mm.median()
             r["obj cls %"] = 100 * d.obj_cls_ok.mean()
+            gc = d.contact_pred_gt.astype(bool)
+            r["own-obj contact precision %"], r["own-obj contact recall %"], r["own-obj contact F1 %"] =                 _f1(d.self_contact.astype(bool), gc)
+            r["own-obj pen>5mm %"] = 100 * (d.self_pen_max_mm > 5).mean()
+            if "self_sd_err_mm" in d:
+                r["own-obj |sd err| p50"] = d.self_sd_err_mm.abs().median()
+            if "rel_obj_t_mm" in d:
+                r["rel obj t p50"] = d.rel_obj_t_mm.median()
+                r["rel obj frame p50"] = d.rel_obj_frame_mm.median()
+                r["scene-scaled mpjpe p50"] = d.scene_scaled_mpjpe.median()
         rows.append(r)
     t = pd.DataFrame(rows).set_index(keys).T
     lines += ["## All selected hands (metrics over detected hands)\n", t.round(2).to_markdown(), ""]
@@ -360,7 +408,7 @@ def main():
         print("ERROR", e)
     if not dfs:
         sys.exit("no results")
-    df = pd.concat(dfs, ignore_index=True)
+    df = add_gt_distance_errors(pd.concat(dfs, ignore_index=True))
     check = (f"GT penetration re-computation vs eval set: max |diff| = {worst:.4f} mm "
              f"({'OK' if worst < 0.05 else 'MISMATCH - camera/object transform is off'})")
     print(check)

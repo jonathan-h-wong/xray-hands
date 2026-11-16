@@ -51,14 +51,21 @@ METRICS = [
     ("pen_max_mm", "Max penetration", "mm", True, "contact"),
     ("pen_vol_mm3", "Penetration volume", "mm³", True, "contact"),
     ("ra_pen_max_mm", "Max penetration (wrist-aligned)", "mm", True, "contact"),
-    ("self_pen_max_mm", "Self-penetration (L/R hands)", "mm", True, "contact"),
+    ("sd_err_mm", "Surface distance err vs GT (pred − GT)", "mm", None, "contact"),
     ("obj_t_err_mm", "Object translation err", "mm", True, "object"),
     ("obj_rot_err_deg", "Object rotation err", "°", True, "object"),
     ("obj_angle_err_deg", "Object articulation err", "°", True, "object"),
     ("mrrpe_ro_mm", "MRRPE right-object", "mm", True, "object"),
+    ("rel_obj_t_mm", "Hand rel. to own object (translation)", "mm", True, "hand-object (own object)"),
+    ("rel_obj_frame_mm", "Hand in own object's frame", "mm", True, "hand-object (own object)"),
+    ("scene_scaled_mpjpe", "MPJPE after one scene scale", "mm", True, "hand-object (own object)"),
+    ("scene_depth_err_pct", "Scene depth error (signed)", "%", None, "hand-object (own object)"),
+    ("self_min_sd_mm", "Min signed dist to own object", "mm", None, "hand-object (own object)"),
+    ("self_sd_err_mm", "Surface distance err, own object", "mm", None, "hand-object (own object)"),
+    ("self_pen_max_mm", "Max penetration into own object", "mm", True, "hand-object (own object)"),
     ("score", "Detector score", "", None, "detection"),
 ]
-BOOLS = ["detected", "contact", "ra_contact", "obj_cls_ok"]
+BOOLS = ["detected", "contact", "ra_contact", "self_contact", "obj_cls_ok"]
 Q = 10.0   # verts stored as int16 in units of 1/Q mm  (range ±3.27 m)
 
 
@@ -131,6 +138,8 @@ def main():
     out = Path(a.out) / a.run
     (out / "hands").mkdir(parents=True, exist_ok=True)
     d = pd.read_parquet(a.frames)
+    if "scene_scale" in d:   # pred depth / GT depth - 1, from the scale that maps the predicted scene onto GT
+        d["scene_depth_err_pct"] = (1.0 / d["scene_scale"] - 1.0) * 100.0
     d["shard"] = [C.shard_name(s, q.split("/")[-1], v).removesuffix(".npz") for s, q, v in zip(d.sid, d.seq, d.view)]
     d = d.sort_values(["shard", "hand", "frame"], kind="stable").reset_index(drop=True)
 

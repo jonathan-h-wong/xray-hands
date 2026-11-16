@@ -8,33 +8,43 @@ GT penetration re-computation vs eval set: max |diff| = 0.0001 mm (OK)
 
 ## All selected hands (metrics over detected hands)
 
-|                     |   ('gt', '-') |   ('hamer', 'wp') |   ('hamer', 'fit2d') |   ('wilor', 'wp') |   ('wilor', 'fit2d') |   ('hopformer', 'native') |
-|:--------------------|--------------:|------------------:|---------------------:|------------------:|---------------------:|--------------------------:|
-| hands               |       3420    |           3420    |              3420    |           3420    |              3420    |                   3420    |
-| detected %          |        100    |             95.85 |                95.85 |             95.12 |                95.12 |                     94.97 |
-| pen p50             |          0    |              0    |                 0    |              0    |                 0    |                      0    |
-| pen p90             |          1.14 |              4.64 |                 2.97 |              5.37 |                 3.9  |                      5.18 |
-| pen>2mm %           |          0    |             18.79 |                12.08 |             22.35 |                14.42 |                     18.72 |
-| pen>5mm %           |          0    |              9.09 |                 4.55 |             11.34 |                 7.78 |                     10.78 |
-| contact %           |         39.88 |             30.14 |                22.12 |             35.66 |                24.72 |                     28.69 |
-| mpjpe_ra p50        |        nan    |             21.32 |                21.32 |             12.26 |                12.26 |                     18.41 |
-| pa_mpjpe p50        |        nan    |              6.71 |                 6.71 |              5.14 |                 5.14 |                      7.74 |
-| pa_mpvpe p50        |        nan    |              7.2  |                 7.2  |              5.58 |                 5.58 |                      8.14 |
-| root_err p50        |        nan    |             43    |                38.47 |             30.7  |                37.57 |                     27.85 |
-| mpjpe_cam p50       |        nan    |             40.01 |                32.2  |             30.54 |                36.51 |                     34.31 |
-| kp2d_err_px p50     |        nan    |             40.5  |                36.09 |             38.71 |                24.38 |                     68.29 |
-| depth_err p50       |        nan    |             37.74 |                24.69 |             -4.25 |               -24.62 |                     -6.14 |
-| |depth_err| p50     |        nan    |             39.92 |                32.57 |             26.32 |                35.22 |                     21.5  |
-| mrrpe_rl p50        |        nan    |             45.94 |                56.45 |             43.95 |                39.3  |                     27.69 |
-| contact recall %    |        nan    |             53.38 |                43.9  |             65.29 |                48.24 |                     49.45 |
-| contact precision % |        nan    |             69.53 |                77.93 |             71.98 |                76.74 |                     67.6  |
-| ra pen p50          |        nan    |              0    |                 0    |              0    |                 0    |                      0    |
-| ra pen>5mm %        |        nan    |             14.95 |                14.95 |              6.21 |                 6.21 |                     10.5  |
-| self pen p50        |        nan    |            nan    |               nan    |            nan    |               nan    |                      0    |
-| obj t err p50       |        nan    |            nan    |               nan    |            nan    |               nan    |                     40.24 |
-| obj rot err p50     |        nan    |            nan    |               nan    |            nan    |               nan    |                      5.79 |
-| mrrpe_ro p50        |        nan    |            nan    |               nan    |            nan    |               nan    |                     29.54 |
-| obj cls %           |        nan    |            nan    |               nan    |            nan    |               nan    |                     98.12 |
+|                             |   ('gt', '-') |   ('hamer', 'wp') |   ('hamer', 'fit2d') |   ('wilor', 'wp') |   ('wilor', 'fit2d') |   ('hopformer', 'native') |
+|:----------------------------|--------------:|------------------:|---------------------:|------------------:|---------------------:|--------------------------:|
+| hands                       |       3420    |           3420    |              3420    |           3420    |              3420    |                   3420    |
+| detected %                  |        100    |             95.85 |                95.85 |             95.12 |                95.12 |                     94.97 |
+| pen p50                     |          0    |              0    |                 0    |              0    |                 0    |                      0    |
+| pen p90                     |          1.14 |              4.64 |                 2.97 |              5.37 |                 3.9  |                      5.18 |
+| pen>2mm %                   |          0    |             18.79 |                12.08 |             22.35 |                14.42 |                     18.72 |
+| pen>5mm %                   |          0    |              9.09 |                 4.55 |             11.34 |                 7.78 |                     10.78 |
+| contact %                   |         39.88 |             30.14 |                22.12 |             35.66 |                24.72 |                     28.69 |
+| mpjpe_ra p50                |        nan    |             21.32 |                21.32 |             12.26 |                12.26 |                     18.41 |
+| pa_mpjpe p50                |        nan    |              6.71 |                 6.71 |              5.14 |                 5.14 |                      7.74 |
+| pa_mpvpe p50                |        nan    |              7.2  |                 7.2  |              5.58 |                 5.58 |                      8.14 |
+| root_err p50                |        nan    |             43    |                38.47 |             30.7  |                37.57 |                     27.85 |
+| mpjpe_cam p50               |        nan    |             40.01 |                32.2  |             30.54 |                36.51 |                     34.31 |
+| kp2d_err_px p50             |        nan    |             40.5  |                36.09 |             38.71 |                24.38 |                     68.29 |
+| depth_err p50               |        nan    |             37.74 |                24.69 |             -4.25 |               -24.62 |                     -6.14 |
+| |depth_err| p50             |        nan    |             39.92 |                32.57 |             26.32 |                35.22 |                     21.5  |
+| mrrpe_rl p50                |        nan    |             45.94 |                56.45 |             43.95 |                39.3  |                     27.69 |
+| contact precision %         |        nan    |             69.53 |                77.93 |             71.98 |                76.74 |                     67.6  |
+| contact recall %            |        nan    |             53.38 |                43.9  |             65.29 |                48.24 |                     49.45 |
+| contact F1 %                |        nan    |             60.4  |                56.16 |             68.47 |                59.24 |                     57.12 |
+| |sd err| p50                |        nan    |              9.53 |                 9.12 |              7.67 |                 9.31 |                     10.66 |
+| ra pen p50                  |        nan    |              0    |                 0    |              0    |                 0    |                      0    |
+| ra pen>5mm %                |        nan    |             14.95 |                14.95 |              6.21 |                 6.21 |                     10.5  |
+| self pen p50                |        nan    |            nan    |               nan    |            nan    |               nan    |                      0    |
+| obj t err p50               |        nan    |            nan    |               nan    |            nan    |               nan    |                     40.24 |
+| obj rot err p50             |        nan    |            nan    |               nan    |            nan    |               nan    |                      5.79 |
+| mrrpe_ro p50                |        nan    |            nan    |               nan    |            nan    |               nan    |                     29.54 |
+| obj cls %                   |        nan    |            nan    |               nan    |            nan    |               nan    |                     98.12 |
+| own-obj contact precision % |        nan    |            nan    |               nan    |            nan    |               nan    |                     58.65 |
+| own-obj contact recall %    |        nan    |            nan    |               nan    |            nan    |               nan    |                     74.8  |
+| own-obj contact F1 %        |        nan    |            nan    |               nan    |            nan    |               nan    |                     65.75 |
+| own-obj pen>5mm %           |        nan    |            nan    |               nan    |            nan    |               nan    |                     21    |
+| own-obj |sd err| p50        |        nan    |            nan    |               nan    |            nan    |               nan    |                     10.32 |
+| rel obj t p50               |        nan    |            nan    |               nan    |            nan    |               nan    |                     35.04 |
+| rel obj frame p50           |        nan    |            nan    |               nan    |            nan    |               nan    |                     36.67 |
+| scene-scaled mpjpe p50      |        nan    |            nan    |               nan    |            nan    |               nan    |                     18.84 |
 
 ## Common subset: 3222 hands detected by every method
 

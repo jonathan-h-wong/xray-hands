@@ -65,6 +65,13 @@ To evaluate every frame, rebuild the eval set locally with `--stride 1`. Then re
   - `self_pen_*` (HOPformer only): penetration into its own predicted object.
   - Contact precision and recall are measured against ground-truth contact.
 - **HOPformer object**: translation error, rotation error, articulation-angle error, class accuracy and `mrrpe_ro_mm`.
+- **Hand relative to the method's own object** (any method that outputs an object pose; currently HOPformer):
+  - `rel_obj_t_mm`: joint error after expressing both hands relative to their object's origin. Low means the hand is placed correctly *on the object*, even if the whole scene is at the wrong depth.
+  - `rel_obj_frame_mm`: the same in each object's own frame, `R^T (J - t)`, so it also includes the object rotation error.
+  - `scene_scaled_mpjpe` and `scene_scale`: hand error after one scale about the camera, fitted to the hand joints plus the object origin. This is what remains once the shared monocular depth/scale ambiguity is removed.
+  - `self_contact`, `self_pen_*`, `self_min_sd_mm`: contact and penetration against the method's own object. The summary reports own-object contact precision, recall and F1 against GT contact, and the share of frames that penetrate the own object by >5 mm.
+- **Surface-distance error** (all methods): `sd_err_mm = min_sd_mm − GT min_sd_mm` (GT object) and `self_sd_err_mm` (own object). Run with `--sdf-pad 150`, or distances beyond 30 mm are clipped.
+- Contact F1 against GT contact is reported for every method.
 - **Lifts for HaMeR/WiLoR**:
   - `wp`: HaMeR's `cam_crop_to_full`, but with the true focal length and principal point.
   - `fit2d`: a least-squares translation that reprojects the model's 3D joints onto its own 2D keypoints.

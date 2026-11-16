@@ -210,6 +210,12 @@ function rate(srcI, m, pred){
   for(let i = 0; i < S.N; i++){ if(R.src[i] !== srcI || !m[i]) continue; const r = pred(i); if(r === null) continue; n++; if(r) k++; }
   return n ? 100 * k / n : NaN;
 }
+function f1(srcI, m, key){   // contact F1 (%) of a method's contact flag vs GT contact, detected hand-frames
+  const R = S.R, c = R[key]; let tp = 0, np_ = 0, ng = 0, n = 0;
+  for(let i = 0; i < S.N; i++){ if(R.src[i] !== srcI || !m[i] || R.detected[i] !== 1 || c[i] === null) continue;
+    n++; const p = c[i] === 1, g = R.gt_contact[i] === 1; if(p) np_++; if(g) ng++; if(p && g) tp++; }
+  if(!n) return NaN; const P = np_ ? tp / np_ : 0, Rc = ng ? tp / ng : 0; return P + Rc ? 200 * P * Rc / (P + Rc) : 0;
+}
 function metricLabel(k){ const m = S.metricMap[k]; return m ? `${m.label}${m.unit ? " (" + m.unit + ")" : ""}` : k; }
 function metricSelect(id, cur){
   const groups = {};
@@ -246,9 +252,16 @@ function summaryCols(){
     fn:i => R.detected[i] !== 1 && R.src[i] !== 0 ? null : (R.pen_max_mm[i] === null ? null : R.pen_max_mm[i] > 5)});
   if(has("ra_pen_max_mm")) cols.push({k:"rapen5", label:"Pen >5 mm, wrist-aligned", unit:"% frames", rate:true,
     fn:i => R.detected[i] !== 1 || R.ra_pen_max_mm[i] === null ? null : R.ra_pen_max_mm[i] > 5});
+  if(R.contact) cols.push({k:"f1", label:"Contact F1 vs GT object", unit:"%", f1:"contact", higher:true});
+  if(R.self_contact) cols.push({k:"f1own", label:"Contact F1, own object", unit:"%", f1:"self_contact", higher:true});
+  if(has("self_pen_max_mm")) cols.push({k:"ownpen5", label:"Pen >5 mm into own object", unit:"% frames", rate:true,
+    fn:i => R.detected[i] !== 1 || R.self_pen_max_mm[i] === null ? null : R.self_pen_max_mm[i] > 5});
+  for(const k of ["rel_obj_t_mm","scene_scaled_mpjpe"]) if(has(k)) cols.push({k});
   for(const k of ["obj_t_err_mm","obj_rot_err_deg"]) if(has(k)) cols.push({k});
   if(R.obj_cls_ok) cols.push({k:"cls", label:"Object class acc", unit:"%", rate:true, higher:true, fn:i => R.obj_cls_ok[i] === null ? null : R.obj_cls_ok[i] === 1});
-  for(const c of cols) if(!c.rate){ const m = S.metricMap[c.k]; Object.assign(c, {label:m.label, unit:m.unit, lower:m.lower}); }
+  const HO = new Set(["pen5","rapen5","f1","f1own","ownpen5","rel_obj_t_mm","scene_scaled_mpjpe","obj_t_err_mm","obj_rot_err_deg","cls"]);
+  for(const c of cols) c.ho = HO.has(c.k);
+  for(const c of cols) if(!c.rate && !c.f1){ const m = S.metricMap[c.k]; Object.assign(c, {label:m.label, unit:m.unit, lower:m.lower}); }
   return cols;
 }
 function renderSummary(){
@@ -259,26 +272,26 @@ function renderSummary(){
     for(let i = 0; i < S.N; i++) if(S.R.src[i] === s && m[i] && (r.gt || S.R.detected[i] === 1)) r.n++;
     for(const c of cols){
       if(r.gt && !c.gt) { r.v[c.k] = NaN; continue; }
-      r.v[c.k] = c.rate ? rate(s, m, c.fn) : statOf(vals(s, c.k, m), st);
+      r.v[c.k] = c.f1 ? f1(s, m, c.f1) : c.rate ? rate(s, m, c.fn) : statOf(vals(s, c.k, m), st);
     }
   }
   const pr = rows.filter(r => !r.gt);
   const best = {};
   for(const c of cols){
     const sc = v => c.higher ? -v : (c.lower === null ? Math.abs(v) : v);
-    let b = Infinity; for(const r of pr) if(Number.isFinite(r.v[c.k])) b = Math.min(b, sc(r.v[c.k]));
-    best[c.k] = v => pr.length > 1 && Number.isFinite(v) && Math.abs(sc(v) - b) < 1e-9;
+    let b = Infinity, nf = 0; for(const r of pr) if(Number.isFinite(r.v[c.k])){ b = Math.min(b, sc(r.v[c.k])); nf++; }
+    best[c.k] = v => nf > 1 && Number.isFinite(v) && Math.abs(sc(v) - b) < 1e-9;
   }
   if(S.sortCol && cols.some(c => c.k === S.sortCol)) pr.sort((a, b) => ((a.v[S.sortCol] ?? Infinity) - (b.v[S.sortCol] ?? Infinity)) * S.sortDir);
   const ordered = [rows[0], ...pr];
   const stName = {median:"median", mean:"mean", p90:"90th percentile"}[st];
   $("#main").innerHTML = `<div class="card"><h2>Overview</h2>
-    <p class="sub">Each error is the ${stName} over detected hand-frames, filtered as above. Rates are the % of hand-frames.
+    <p class="sub">Each error is the ${stName} over detected hand-frames, filtered as above. Rates are the % of hand-frames. Contact F1 compares each method's contact flag with GT contact; "own object" uses the method's own object estimate (only methods that predict one), as do "Hand rel. to own object" and "MPJPE after one scene scale".
     In each column, the bold value is the best method (for the signed depth error, the closest to zero). The GT row shows the ground truth's own penetration, a floor from mesh noise. Click a header to sort.</p>
     <div class="ctl"><label class="f">Statistic <select id="stat">${["median","mean","p90"].map(x => `<option ${x === st ? "selected" : ""}>${x}</option>`).join("")}</select></label></div>
-    <div class="tw"><table><thead><tr><th>Method</th><th>n</th>${cols.map(c => `<th class="sort" data-k="${c.k}" title="${esc(c.label)}">${esc(c.label)}<br><span class="dim">${esc(c.unit || "")}${S.sortCol === c.k ? (S.sortDir > 0 ? " ▲" : " ▼") : ""}</span></th>`).join("")}</tr></thead>
+    ${[["Hand pose and placement", c => !c.ho], ["Contact, hand–object and object", c => c.ho]].map(([title, sel]) => { const cs = cols.filter(sel); return cs.length ? `<h3 style="font-size:12px;color:var(--ink2);margin:14px 0 4px">${title}</h3><div class="tw"><table><thead><tr><th>Method</th><th>n</th>${cs.map(c => `<th class="sort" data-k="${c.k}" title="${esc(c.label)}">${esc(c.label)}<br><span class="dim">${esc(c.unit || "")}${S.sortCol === c.k ? (S.sortDir > 0 ? " ▲" : " ▼") : ""}</span></th>`).join("")}</tr></thead>
     <tbody>${ordered.map(r => `<tr><td>${r.gt ? `<span class="mname">${swatch(css("--gt"))}ground truth</span>` : `<span class="mname">${swatch(mColor(r.k))}${esc(mLabel(r.k))}</span>`}</td><td class="dim">${r.n}</td>` +
-      cols.map(c => `<td class="${!r.gt && best[c.k](r.v[c.k]) ? "best" : ""}">${r.gt && !c.gt ? `<span class="dim">—</span>` : fmt(r.v[c.k])}</td>`).join("") + `</tr>`).join("")}</tbody></table></div></div>
+      cs.map(c => `<td class="${!r.gt && best[c.k](r.v[c.k]) ? "best" : ""}">${r.gt && !c.gt ? `<span class="dim">—</span>` : fmt(r.v[c.k])}</td>`).join("") + `</tr>`).join("")}</tbody></table></div>` : ""; }).join("")}</div>
     <div class="card"><h2>All metrics</h2><p class="sub">p10 / median / p90 of every exported metric for the active methods (detected hand-frames).</p><div class="tw" id="allm"></div></div>`;
   $("#stat").onchange = e => { S.stat = e.target.value; render(); };
   for(const th of document.querySelectorAll("th.sort")) th.onclick = () => { const k = th.dataset.k; S.sortDir = S.sortCol === k ? -S.sortDir : 1; S.sortCol = k; render(); };
@@ -505,7 +518,7 @@ async function drawFrame(){
   $("#ov").textContent = `${sq.seq} · view ${sq.view} · ${F.hand} hand · frame ${frame}` + (gtRow !== undefined && S.R.gt_contact[gtRow] ? " · GT in contact" : "");
   F3.update(d, sd, sq.obj, cache.objects[sq.obj]);
   // per-frame table
-  const cols = ["pa_mpjpe","mpjpe_ra","mpjpe_cam","root_err","depth_err","kp2d_err_px","min_sd_mm","pen_max_mm","obj_t_err_mm","obj_rot_err_deg"].filter(k => S.metricMap[k]);
+  const cols = ["pa_mpjpe","mpjpe_ra","mpjpe_cam","root_err","depth_err","kp2d_err_px","min_sd_mm","pen_max_mm","rel_obj_t_mm","self_min_sd_mm","self_pen_max_mm","obj_t_err_mm","obj_rot_err_deg"].filter(k => S.metricMap[k]);
   const srcs = ["gt", ...onMethods()];
   $("#ftitle").textContent = `Frame ${frame}`;
   $("#ftab").innerHTML = `<table><thead><tr><th></th><th>score</th>${cols.map(k => `<th title="${esc(metricLabel(k))}">${esc(S.metricMap[k].label)}<br><span class="dim">${esc(S.metricMap[k].unit)}</span></th>`).join("")}</tr></thead><tbody>` +
@@ -519,7 +532,8 @@ function drawTimeline(sd, shI, h){
   const el = $("#tl"), key = S.fr.metric, mt = S.metricMap[key], c = S.R[key], ms = onMethods();
   const W = el.clientWidth || 700, H = 200, ml = 46, mr = 12, mtp = 8, mb = 26, iw = W - ml - mr, ih = H - mtp - mb, n = sd.n;
   const series = ms.map(k => ({k, c:mColor(k), v:sd.frame.map(f => { const r = S.lookup.get(`${shI}|${h}|${f}|${srcOf(k)}`); return r === undefined || S.R.detected[r] !== 1 ? null : c[r]; })}));
-  if(key === "min_sd_mm" || key === "pen_max_mm") series.unshift({k:"gt", c:css("--gt"), v:sd.frame.map(f => { const r = S.lookup.get(`${shI}|${h}|${f}|0`); return r === undefined ? null : c[r]; })});
+  const gk = {min_sd_mm:"min_sd_mm", pen_max_mm:"pen_max_mm", self_min_sd_mm:"min_sd_mm", self_pen_max_mm:"pen_max_mm"}[key];
+  if(gk && S.R[gk]) series.unshift({k:"gt", c:css("--gt"), v:sd.frame.map(f => { const r = S.lookup.get(`${shI}|${h}|${f}|0`); return r === undefined ? null : S.R[gk][r]; })});
   const all = series.flatMap(s => s.v).filter(v => v !== null);
   if(!all.length){ el.innerHTML = `<div class="empty">No values.</div>`; return; }
   let lo = Math.min(0, ...all), hi = Math.max(...all); if(hi <= lo) hi = lo + 1;

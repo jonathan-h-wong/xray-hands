@@ -9,3 +9,4 @@ results/**/*.npz
 baselines/preds*/
 viewer/data/
 trial_images/
+viewer/bench/data/

@@ -73,6 +73,44 @@ To evaluate every frame, rebuild the eval set locally with `--stride 1`. Then re
   - the **common subset** that every method detected (use this one for fair comparisons);
   - a per-part table over each method's contact frames.
 
+## Browser viewer (`viewer/bench/`)
+
+An interactive page for browsing any run. It has five tabs:
+
+- **Summary**: one row per method/lift, with the median, mean or p90 of the headline metrics, plus p10/p50/p90 of every metric.
+- **Distributions**: a CDF of any metric for every method, with a hover crosshair.
+- **Breakdown**: any metric by object, sequence, subject, hand or GT contact. Click a sequence to open it in 3D.
+- **Contact**: for each hand part, where the prediction lands (penetrating, touching, hovering, off or far), grouped by the GT part's distance to the object. Can be shown wrist-aligned.
+- **Frames (3D)**: GT and predicted MANO meshes plus the posed GT object, in the camera frame. It also shows HOPformer's own object estimate, a wrist-aligned toggle, joints, per-frame metrics, a per-sequence timeline (click to jump) and "next worst" stepping.
+
+The filters at the top (object, hand, GT contact, method chips) apply to every tab. The URL hash keeps the run, tab and frame, so a link reopens the same view.
+
+```bash
+# 1. export a run (writes viewer/bench/data/<run>/, git-ignored, and registers it in runs.json)
+python baselines/export_bench_viewer.py --run 20261113_ego_s5 \
+  --frames results/baselines/20261113_ego_s5_compare_fine_frames.parquet \
+  --hands  results/baselines/hands_20261113_ego_s5/native --note "calibrated intrinsics"
+python baselines/export_bench_viewer.py --run 20261113_ego_s5_moge \
+  --frames results/baselines/20261113_ego_s5_compare_moge_frames.parquet \
+  --hands  results/baselines/hands_20261113_ego_s5/moge --note "MoGe-2 intrinsics (ablation)"
+# 2. serve and open http://localhost:8000/bench/
+python -m http.server -d viewer 8000
+```
+
+The inputs are in `s3://xray-hands/eval/arctic/<run>/`:
+- `compare/<run>_compare*_frames.parquet` are the `--frames` files;
+- `hands/{native,moge}/` are the `--hands` directories.
+
+The 3D view also needs the ARCTIC object templates and MANO faces (`data/arctic/...`, as for `eval_arctic.py`). Without `--hands`, every tab except the 3D one still works.
+
+**Adding your own model:**
+1. Write predictions in the per-shard `npz` format the baselines use. `infer_hand2d.py` and `infer_hopformer.py` show the keys; `eval_arctic.py` reads them.
+2. Run `eval_arctic.py --sdf-pad 150 --export <dir>`.
+3. Concatenate your `_frames.parquet` with the baseline compare parquet (drop the duplicate GT rows), so that your method is shown next to the baselines.
+4. Export that parquet with `--hands` pointing to a directory that holds the merged npz. The export reads `<method>.<lift>.*` keys for every method in the parquet, so you can also merge the npz files key by key.
+
+Methods get colours in a fixed order (HaMeR, WiLoR, HOPformer, then the rest alphabetically). Only the first 8 get distinct colours.
+
 ## Assumptions and caveats
 
 1. **HOPformer hand crops.** Its loader reads pre-made 256 px crops (`cropped_right/`, `cropped_left/`). The repo neither ships nor documents how those crops were made for ARCTIC. Here they come from WiLoR's YOLO detector: a square box of 2.0 × the detection's larger side (`--crop-rescale`), passed through HOPformer's own reader (letterbox, flip the left crop, normalise). If its numbers fall clearly short of the paper's (val MPJPE 16.1 mm on all val frames, not this subset), suspect this step first.

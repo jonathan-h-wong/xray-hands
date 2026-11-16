@@ -1,0 +1,627 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hand Benchmark Viewer</title>
+<style>
+:root{
+  color-scheme: light;
+  --bg:#f6f6f4; --panel:#fcfcfb; --ink:#0b0b0b; --ink2:#52514e; --muted:#8a8984; --line:#e2e1dc; --grid:#eceae5;
+  --hover:#f0efec; --accent:#2a78d6;
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#e87ba4; --s6:#008300; --s7:#6250d6; --s8:#e34948;
+  --gt:#8d8c86; --obj:#c9c6bc;
+  --c0:#a32b2b; --c1:#ec9a96; --c2:#d9d8d4; --c3:#9ec5f4; --c4:#3987e5; --c5:#184f95;
+  --q0:#e8f1fd; --q1:#cde2fb; --q2:#9ec5f4; --q3:#6da7ec; --q4:#3987e5; --q5:#256abf; --q6:#184f95;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme: dark;
+    --bg:#141413; --panel:#1a1a19; --ink:#f0efec; --ink2:#c3c2b7; --muted:#8f8e86; --line:#33332f; --grid:#262624;
+    --hover:#242422; --accent:#3987e5;
+    --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767;
+    --gt:#a3a29a; --obj:#5d5b55;
+    --c0:#e66767; --c1:#7a3535; --c2:#4a4a46; --c3:#1c5cab; --c4:#3987e5; --c5:#86b6ef;
+    --q0:#1d2633; --q1:#104281; --q2:#184f95; --q3:#1c5cab; --q4:#2a78d6; --q5:#5598e7; --q6:#86b6ef;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --bg:#141413; --panel:#1a1a19; --ink:#f0efec; --ink2:#c3c2b7; --muted:#8f8e86; --line:#33332f; --grid:#262624;
+  --hover:#242422; --accent:#3987e5;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767;
+  --gt:#a3a29a; --obj:#5d5b55;
+  --c0:#e66767; --c1:#7a3535; --c2:#4a4a46; --c3:#1c5cab; --c4:#3987e5; --c5:#86b6ef;
+  --q0:#1d2633; --q1:#104281; --q2:#184f95; --q3:#1c5cab; --q4:#2a78d6; --q5:#5598e7; --q6:#86b6ef;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{position:sticky;top:0;z-index:5;background:var(--panel);border-bottom:1px solid var(--line);padding:10px 16px}
+.bar{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center}
+h1{font-size:16px;margin:0 8px 0 0;font-weight:650;letter-spacing:-.01em}
+.note{color:var(--ink2);font-size:13px}
+select,button,input[type=number]{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:4px 8px}
+button{cursor:pointer}
+button:hover,select:hover{background:var(--hover)}
+button.on{border-color:var(--ink2)}
+label.f{display:flex;gap:6px;align-items:center;color:var(--ink2);font-size:13px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:999px;font-size:13px}
+.chip .sw{width:10px;height:10px;border-radius:3px;flex:none}
+.chip.off{opacity:.45}
+.chip.off .sw{background:transparent!important;outline:1.5px solid var(--muted)}
+nav{display:flex;gap:2px;margin-top:10px;overflow-x:auto}
+nav button{border:none;border-bottom:2px solid transparent;border-radius:0;background:none;padding:6px 12px;color:var(--ink2)}
+nav button.on{color:var(--ink);border-bottom-color:var(--accent);font-weight:600}
+main{padding:16px;max-width:1400px;margin:0 auto}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:16px}
+.card h2{font-size:14px;margin:0 0 4px;font-weight:650}
+.card .sub{color:var(--ink2);font-size:13px;margin:0 0 10px}
+.tw{overflow-x:auto}
+table{border-collapse:collapse;font-variant-numeric:tabular-nums;font-size:13px}
+th,td{padding:6px 10px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--grid)}
+th{color:var(--ink2);font-weight:600;font-size:12px;cursor:default}
+th.sort{cursor:pointer}
+td:first-child,th:first-child{text-align:left}
+td.best{font-weight:700}
+tr.click{cursor:pointer}
+tr.click:hover td{background:var(--hover)}
+.mname{display:inline-flex;align-items:center;gap:7px}
+.mname .sw{width:10px;height:10px;border-radius:3px}
+.dim{color:var(--muted)}
+.ctl{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin-bottom:10px}
+svg text{fill:var(--ink2);font-size:11px}
+svg .grid line{stroke:var(--grid)}
+svg .axis{stroke:var(--line)}
+#tip{position:fixed;pointer-events:none;z-index:20;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:8px;
+  padding:7px 9px;font-size:12px;box-shadow:0 4px 14px rgba(0,0,0,.15);display:none;max-width:320px;font-variant-numeric:tabular-nums}
+#tip .r{display:flex;gap:8px;align-items:center;justify-content:space-between}
+#tip .sw{width:9px;height:9px;border-radius:2px;display:inline-block;margin-right:5px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--ink2);margin:4px 0 10px}
+.legend span.sw{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:5px;vertical-align:-2px}
+.cgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(420px,1fr));gap:16px}
+.crow{display:grid;grid-template-columns:120px 48px 1fr 64px;gap:8px;align-items:center;font-size:12px;margin:3px 0}
+.crow .n,.crow .e{text-align:right;color:var(--ink2);font-variant-numeric:tabular-nums}
+.stack{display:flex;height:18px;gap:2px}
+.stack div{height:100%}
+.stack div:first-child{border-radius:4px 0 0 4px}.stack div:last-child{border-radius:0 4px 4px 0}
+.fr{display:block}
+#three{position:relative;height:560px;border-radius:8px;overflow:hidden;border:1px solid var(--line)}
+#three .ov{position:absolute;left:10px;top:8px;font-size:12px;color:var(--ink2);pointer-events:none}
+.side h3{font-size:12px;color:var(--ink2);text-transform:uppercase;letter-spacing:.04em;margin:12px 0 6px}
+.chk{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13px}
+.empty{padding:40px;text-align:center;color:var(--ink2)}
+code{font-family:ui-monospace,Consolas,monospace;font-size:12px;background:var(--hover);padding:1px 4px;border-radius:4px}
+@media (max-width:900px){.fr{grid-template-columns:1fr}#three{height:420px}.cgrid{grid-template-columns:1fr}.crow{grid-template-columns:90px 40px 1fr 54px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="bar">
+    <h1>Hand Benchmark Viewer</h1>
+    <label class="f">Run <select id="run"></select></label>
+    <span class="note" id="runnote"></span>
+  </div>
+  <div class="bar" style="margin-top:8px">
+    <label class="f">Object <select id="fObj"></select></label>
+    <label class="f">Hand <select id="fHand"><option value="all">both</option><option value="0">left</option><option value="1">right</option></select></label>
+    <label class="f">GT contact <select id="fGtc"><option value="all">all</option><option value="1">in contact</option><option value="0">not in contact</option></select></label>
+    <div class="chips" id="chips"></div>
+  </div>
+  <nav id="tabs"></nav>
+</header>
+<main id="main"></main>
+<div id="tip"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+"use strict";
+const $ = s => document.querySelector(s);
+const css = k => getComputedStyle(document.documentElement).getPropertyValue(k).trim();
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const TABS = [["summary","Summary"],["dist","Distributions"],["breakdown","Breakdown"],["contact","Contact"],["frames","Frames (3D)"]];
+const GT_BINS = [[-Infinity,2,"touching ≤2 mm"],[2,10,"near 2–10"],[10,30,"free 10–30"],[30,50,"clear 30–50"],[50,Infinity,"away >50"]];
+const PRED_BINS = [[-Infinity,-5,"deep pen < −5"],[-5,-2,"pen −5…−2"],[-2,2,"touch ±2"],[2,10,"hover 2–10"],[10,50,"off 10–50"],[50,Infinity,"far > 50"]];
+const S = {runs:[], run:null, meta:null, R:null, N:0, tab:"summary", on:new Set(), stat:"median",
+  sortCol:null, sortDir:1, distMetric:"pa_mpjpe", bdMetric:"pa_mpjpe", bdGroup:"obj", ctRA:false, ctPart:"all",
+  fr:{shard:null, hand:"right", i:0, metric:"mpjpe_cam", wa:false, skel:false, xray:true, obj:true, pobj:true, gt:true, worst:-1}};
+const cache = {hands:new Map(), objects:null};
+
+// ------------------------------------------------------------------ data
+async function getJSON(u){ const r = await fetch(u); if(!r.ok) throw new Error(u+": "+r.status); return r.json(); }
+function readHash(){ const h = new URLSearchParams(location.hash.slice(1)); return Object.fromEntries(h.entries()); }
+function writeHash(){
+  const h = {run:S.run, tab:S.tab};
+  if(S.tab === "frames" && S.fr.shard){ Object.assign(h, {seq:S.fr.shard, hand:S.fr.hand, i:S.fr.i}); }
+  history.replaceState(null, "", "#" + new URLSearchParams(h).toString());
+}
+async function init(){
+  try { S.runs = await getJSON("data/runs.json"); }
+  catch(e){
+    $("#main").innerHTML = `<div class="card empty"><b>No runs found.</b><br><br>Export one with<br><code>python baselines/export_bench_viewer.py --run NAME --frames ..._frames.parquet --hands DIR</code><br>
+      then serve the viewer folder: <code>python -m http.server -d viewer 8000</code> and open <code>http://localhost:8000/bench/</code>.<br><br><span class="dim">(${esc(e.message)})</span></div>`;
+    return;
+  }
+  const h = readHash();
+  $("#run").innerHTML = S.runs.map(r => `<option value="${esc(r.run)}">${esc(r.run)}</option>`).join("");
+  $("#run").onchange = () => loadRun($("#run").value);
+  $("#tabs").innerHTML = TABS.map(([k,l]) => `<button data-t="${k}">${l}</button>`).join("");
+  $("#tabs").onclick = e => { const t = e.target.dataset.t; if(t){ S.tab = t; render(); } };
+  for(const id of ["#fObj","#fHand","#fGtc"]) $(id).onchange = () => render();
+  if(h.tab) S.tab = h.tab;
+  if(h.seq) Object.assign(S.fr, {shard:h.seq, hand:h.hand || "right", i:+h.i || 0});
+  const r0 = S.runs.find(r => r.run === h.run) ? h.run : S.runs[S.runs.length-1].run;
+  $("#run").value = r0;
+  await loadRun(r0, true);
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { if(F3) F3.theme(); render(); });
+  window.addEventListener("resize", () => { if(S.tab !== "frames") render(); });
+}
+async function loadRun(name, keepFrame){
+  $("#main").innerHTML = `<div class="card empty">Loading ${esc(name)}…</div>`;
+  S.run = name;
+  const [meta, R] = await Promise.all([getJSON(`data/${name}/meta.json`), getJSON(`data/${name}/rows.json`)]);
+  S.meta = meta; S.R = R; S.N = R.src.length;
+  cache.hands.clear(); cache.objects = null;
+  S.on = new Set(meta.methods.map(m => m.key));
+  S.seqObj = meta.seqs.map(s => s.obj);
+  S.lookup = new Map();
+  for(let i = 0; i < S.N; i++) S.lookup.set(`${R.shard[i]}|${R.hand[i]}|${R.frame[i]}|${R.src[i]}`, i);
+  S.metricMap = Object.fromEntries(meta.metrics.map(m => [m.key, m]));
+  const objs = [...new Set(S.seqObj)].sort();
+  $("#fObj").innerHTML = `<option value="all">all</option>` + objs.map(o => `<option>${esc(o)}</option>`).join("");
+  $("#runnote").textContent = `${meta.note ? meta.note + " · " : ""}${meta.seqs.length} sequences · ${(S.N / meta.src.length) | 0} hand-frames · ${meta.created}`;
+  if(!keepFrame || !meta.seqs.some(s => s.shard === S.fr.shard)) S.fr.shard = null;
+  if(!S.metricMap[S.distMetric]) S.distMetric = meta.metrics[0].key;
+  if(!S.metricMap[S.bdMetric]) S.bdMetric = meta.metrics[0].key;
+  if(!S.metricMap[S.fr.metric]) S.fr.metric = meta.metrics[0].key;
+  renderChips();
+  render();
+}
+const mIdx = k => S.meta.methods.findIndex(m => m.key === k);
+const mColor = k => { const i = mIdx(k); return i >= 0 && i < 8 ? css(`--s${i+1}`) : css("--muted"); };
+const mLabel = k => { const m = S.meta.methods.find(x => x.key === k); return m ? `${m.method} · ${m.lift}` : k; };
+const srcOf = k => S.meta.src.indexOf(k);
+const onMethods = () => S.meta.methods.map(m => m.key).filter(k => S.on.has(k));
+function renderChips(){
+  $("#chips").innerHTML = S.meta.methods.map(m =>
+    `<button class="chip ${S.on.has(m.key) ? "" : "off"}" data-k="${esc(m.key)}" title="toggle ${esc(m.key)}"><span class="sw" style="background:${mColor(m.key)}"></span>${esc(mLabel(m.key))}</button>`).join("");
+  $("#chips").onclick = e => { const b = e.target.closest(".chip"); if(!b) return; const k = b.dataset.k;
+    S.on.has(k) ? S.on.delete(k) : S.on.add(k); renderChips(); render(); };
+}
+function mask(){
+  const R = S.R, o = $("#fObj").value, h = $("#fHand").value, g = $("#fGtc").value, m = new Uint8Array(S.N);
+  for(let i = 0; i < S.N; i++)
+    m[i] = (o === "all" || S.seqObj[R.shard[i]] === o) && (h === "all" || R.hand[i] === +h) && (g === "all" || R.gt_contact[i] === +g) ? 1 : 0;
+  return m;
+}
+function vals(srcI, key, m){
+  const R = S.R, c = R[key], src = R.src, det = R.detected, out = [];
+  if(!c) return new Float64Array(0);
+  for(let i = 0; i < S.N; i++) if(src[i] === srcI && m[i] && (srcI === 0 || det[i] === 1) && c[i] !== null) out.push(c[i]);
+  return Float64Array.from(out).sort();
+}
+function quant(a, q){ if(!a.length) return NaN; const p = (a.length - 1) * q, lo = Math.floor(p), hi = Math.ceil(p); return a[lo] + (a[hi] - a[lo]) * (p - lo); }
+function mean(a){ let s = 0; for(const v of a) s += v; return a.length ? s / a.length : NaN; }
+function statOf(a, st){ return st === "mean" ? mean(a) : quant(a, st === "p90" ? .9 : .5); }
+function fmt(v, d = 1){ return Number.isFinite(v) ? v.toFixed(d) : "—"; }
+function rate(srcI, m, pred){
+  const R = S.R; let n = 0, k = 0;
+  for(let i = 0; i < S.N; i++){ if(R.src[i] !== srcI || !m[i]) continue; const r = pred(i); if(r === null) continue; n++; if(r) k++; }
+  return n ? 100 * k / n : NaN;
+}
+function metricLabel(k){ const m = S.metricMap[k]; return m ? `${m.label}${m.unit ? " (" + m.unit + ")" : ""}` : k; }
+function metricSelect(id, cur){
+  const groups = {};
+  for(const m of S.meta.metrics) (groups[m.group] ||= []).push(m);
+  return `<select id="${id}">` + Object.entries(groups).map(([g, ms]) => `<optgroup label="${g}">` +
+    ms.map(m => `<option value="${m.key}" ${m.key === cur ? "selected" : ""}>${esc(metricLabel(m.key))}</option>`).join("") + `</optgroup>`).join("") + `</select>`;
+}
+
+// ------------------------------------------------------------------ tooltip
+const tip = $("#tip");
+function showTip(e, html){ tip.innerHTML = html; tip.style.display = "block";
+  const w = tip.offsetWidth, h = tip.offsetHeight; let x = e.clientX + 14, y = e.clientY + 14;
+  if(x + w > innerWidth - 8) x = e.clientX - w - 14; if(y + h > innerHeight - 8) y = e.clientY - h - 14;
+  tip.style.left = x + "px"; tip.style.top = y + "px"; }
+function hideTip(){ tip.style.display = "none"; }
+const swatch = c => `<span class="sw" style="background:${c}"></span>`;
+
+// ------------------------------------------------------------------ render
+function render(){
+  if(!S.meta) return;
+  for(const b of document.querySelectorAll("#tabs button")) b.classList.toggle("on", b.dataset.t === S.tab);
+  hideTip();
+  if(S.tab !== "frames" && F3) F3.detach();
+  ({summary:renderSummary, dist:renderDist, breakdown:renderBreakdown, contact:renderContact, frames:renderFrames}[S.tab] || renderSummary)();
+  writeHash();
+}
+
+// Summary -------------------------------------------------------------
+function summaryCols(){
+  const has = k => !!S.metricMap[k], R = S.R;
+  const cols = [{k:"det", label:"Detected", unit:"%", rate:true, higher:true, fn:i => R.detected[i] === null ? null : R.detected[i] === 1}];
+  for(const k of ["pa_mpjpe","mpjpe_ra","mpjpe_cam","root_err","depth_err","kp2d_err_px"]) if(has(k)) cols.push({k});
+  if(has("pen_max_mm")) cols.push({k:"pen5", label:"Penetration >5 mm", unit:"% frames", rate:true, gt:true,
+    fn:i => R.detected[i] !== 1 && R.src[i] !== 0 ? null : (R.pen_max_mm[i] === null ? null : R.pen_max_mm[i] > 5)});
+  if(has("ra_pen_max_mm")) cols.push({k:"rapen5", label:"Pen >5 mm, wrist-aligned", unit:"% frames", rate:true,
+    fn:i => R.detected[i] !== 1 || R.ra_pen_max_mm[i] === null ? null : R.ra_pen_max_mm[i] > 5});
+  for(const k of ["obj_t_err_mm","obj_rot_err_deg"]) if(has(k)) cols.push({k});
+  if(R.obj_cls_ok) cols.push({k:"cls", label:"Object class acc", unit:"%", rate:true, higher:true, fn:i => R.obj_cls_ok[i] === null ? null : R.obj_cls_ok[i] === 1});
+  for(const c of cols) if(!c.rate){ const m = S.metricMap[c.k]; Object.assign(c, {label:m.label, unit:m.unit, lower:m.lower}); }
+  return cols;
+}
+function renderSummary(){
+  const m = mask(), cols = summaryCols(), st = S.stat;
+  const rows = [{k:"gt", gt:true}, ...onMethods().map(k => ({k}))];
+  for(const r of rows){
+    const s = srcOf(r.k); r.v = {}; r.n = 0;
+    for(let i = 0; i < S.N; i++) if(S.R.src[i] === s && m[i] && (r.gt || S.R.detected[i] === 1)) r.n++;
+    for(const c of cols){
+      if(r.gt && !c.gt) { r.v[c.k] = NaN; continue; }
+      r.v[c.k] = c.rate ? rate(s, m, c.fn) : statOf(vals(s, c.k, m), st);
+    }
+  }
+  const pr = rows.filter(r => !r.gt);
+  const best = {};
+  for(const c of cols){
+    const sc = v => c.higher ? -v : (c.lower === null ? Math.abs(v) : v);
+    let b = Infinity; for(const r of pr) if(Number.isFinite(r.v[c.k])) b = Math.min(b, sc(r.v[c.k]));
+    best[c.k] = v => pr.length > 1 && Number.isFinite(v) && Math.abs(sc(v) - b) < 1e-9;
+  }
+  if(S.sortCol && cols.some(c => c.k === S.sortCol)) pr.sort((a, b) => ((a.v[S.sortCol] ?? Infinity) - (b.v[S.sortCol] ?? Infinity)) * S.sortDir);
+  const ordered = [rows[0], ...pr];
+  const stName = {median:"median", mean:"mean", p90:"90th percentile"}[st];
+  $("#main").innerHTML = `<div class="card"><h2>Overview</h2>
+    <p class="sub">Each error is the ${stName} over detected hand-frames, filtered as above. Rates are the % of hand-frames.
+    In each column, the bold value is the best method (for the signed depth error, the closest to zero). The GT row shows the ground truth's own penetration, a floor from mesh noise. Click a header to sort.</p>
+    <div class="ctl"><label class="f">Statistic <select id="stat">${["median","mean","p90"].map(x => `<option ${x === st ? "selected" : ""}>${x}</option>`).join("")}</select></label></div>
+    <div class="tw"><table><thead><tr><th>Method</th><th>n</th>${cols.map(c => `<th class="sort" data-k="${c.k}" title="${esc(c.label)}">${esc(c.label)}<br><span class="dim">${esc(c.unit || "")}${S.sortCol === c.k ? (S.sortDir > 0 ? " ▲" : " ▼") : ""}</span></th>`).join("")}</tr></thead>
+    <tbody>${ordered.map(r => `<tr><td>${r.gt ? `<span class="mname">${swatch(css("--gt"))}ground truth</span>` : `<span class="mname">${swatch(mColor(r.k))}${esc(mLabel(r.k))}</span>`}</td><td class="dim">${r.n}</td>` +
+      cols.map(c => `<td class="${!r.gt && best[c.k](r.v[c.k]) ? "best" : ""}">${r.gt && !c.gt ? `<span class="dim">—</span>` : fmt(r.v[c.k])}</td>`).join("") + `</tr>`).join("")}</tbody></table></div></div>
+    <div class="card"><h2>All metrics</h2><p class="sub">p10 / median / p90 of every exported metric for the active methods (detected hand-frames).</p><div class="tw" id="allm"></div></div>`;
+  $("#stat").onchange = e => { S.stat = e.target.value; render(); };
+  for(const th of document.querySelectorAll("th.sort")) th.onclick = () => { const k = th.dataset.k; S.sortDir = S.sortCol === k ? -S.sortDir : 1; S.sortCol = k; render(); };
+  const ms = onMethods();
+  $("#allm").innerHTML = `<table><thead><tr><th>Metric</th>${ms.map(k => `<th><span class="mname">${swatch(mColor(k))}${esc(mLabel(k))}</span></th>`).join("")}</tr></thead><tbody>` +
+    S.meta.metrics.map(mt => `<tr><td>${esc(metricLabel(mt.key))}</td>` + ms.map(k => { const a = vals(srcOf(k), mt.key, m);
+      return a.length ? `<td><span class="dim">${fmt(quant(a,.1))} /</span> ${fmt(quant(a,.5))} <span class="dim">/ ${fmt(quant(a,.9))}</span></td>` : `<td class="dim">—</td>`; }).join("") + `</tr>`).join("") + `</tbody></table>`;
+}
+
+// Distributions --------------------------------------------------------
+function renderDist(){
+  $("#main").innerHTML = `<div class="card"><h2>Cumulative distribution</h2>
+    <p class="sub">Share of detected hand-frames whose error is at or below x. Curves further up and to the left are better. The two lifts of a 2D method (wp, fit2d) share the same pose, so their curves coincide for pose-only metrics. Hover to read off every method at one x.</p>
+    <div class="ctl"><label class="f">Metric ${metricSelect("dm", S.distMetric)}</label><label class="f"><input type="checkbox" id="dgt" ${S.distGT ? "checked" : ""}> include ground truth</label></div>
+    <div id="cdf"></div><div class="tw" id="dq" style="margin-top:12px"></div></div>`;
+  $("#dm").onchange = e => { S.distMetric = e.target.value; render(); };
+  $("#dgt").onchange = e => { S.distGT = e.target.checked; render(); };
+  const m = mask(), key = S.distMetric, mt = S.metricMap[key];
+  const series = onMethods().map(k => ({k, c:mColor(k), lab:mLabel(k), a:vals(srcOf(k), key, m)}));
+  if(S.distGT) series.unshift({k:"gt", c:css("--gt"), lab:"ground truth", a:vals(0, key, m)});
+  const all = series.filter(s => s.a.length);
+  if(!all.length){ $("#cdf").innerHTML = `<div class="empty">No values for this metric and filter.</div>`; return; }
+  let lo = Math.min(...all.map(s => quant(s.a, mt.lower === null ? .01 : 0))), hi = Math.max(...all.map(s => quant(s.a, .98)));
+  if(mt.lower !== null) lo = Math.min(0, lo);
+  if(hi <= lo) hi = lo + 1;
+  const el = $("#cdf"), W = el.clientWidth || 800, H = 340, ml = 46, mr = 16, mtp = 10, mb = 38, iw = W - ml - mr, ih = H - mtp - mb;
+  const X = v => ml + (v - lo) / (hi - lo) * iw, Y = p => mtp + (1 - p) * ih;
+  const ticks = niceTicks(lo, hi, 7);
+  let svg = `<svg width="${W}" height="${H}" role="img" aria-label="CDF of ${esc(mt.label)}"><g class="grid">` +
+    ticks.map(t => `<line x1="${X(t)}" x2="${X(t)}" y1="${mtp}" y2="${mtp + ih}"/>`).join("") +
+    [0,.25,.5,.75,1].map(p => `<line x1="${ml}" x2="${ml + iw}" y1="${Y(p)}" y2="${Y(p)}"/>`).join("") + `</g>` +
+    ticks.map(t => `<text x="${X(t)}" y="${H - mb + 16}" text-anchor="middle">${+t.toFixed(2)}</text>`).join("") +
+    [0,.25,.5,.75,1].map(p => `<text x="${ml - 6}" y="${Y(p) + 4}" text-anchor="end">${p * 100}%</text>`).join("") +
+    `<text x="${ml + iw / 2}" y="${H - 4}" text-anchor="middle">${esc(metricLabel(key))}</text>` +
+    `<line class="axis" x1="${ml}" x2="${ml + iw}" y1="${mtp + ih}" y2="${mtp + ih}"/>`;
+  for(const s of all){
+    const n = s.a.length, pts = [];
+    const step = Math.max(1, Math.floor(n / 400));
+    for(let j = 0; j < n; j += step) pts.push([s.a[j], (j + 1) / n]);
+    pts.push([s.a[n - 1], 1]);
+    const d = pts.filter(p => p[0] <= hi * 1.5 + 1).map((p, j) => `${j ? "L" : "M"}${Math.min(X(p[0]), ml + iw).toFixed(1)},${Y(p[1]).toFixed(1)}`).join("");
+    svg += `<path d="${d}" fill="none" stroke="${s.c}" stroke-width="2" stroke-linejoin="round" ${s.k === "gt" ? 'stroke-dasharray="5 4"' : ""}/>`;
+  }
+  svg += `<line id="xh" y1="${mtp}" y2="${mtp + ih}" stroke="${css("--muted")}" stroke-width="1" style="display:none"/><rect x="${ml}" y="${mtp}" width="${iw}" height="${ih}" fill="transparent" id="hit"/></svg>`;
+  el.innerHTML = `<div class="legend">${all.map(s => `<span>${swatch(s.c)}${esc(s.lab)}</span>`).join("")}</div>` + svg;
+  const hit = el.querySelector("#hit"), xh = el.querySelector("#xh");
+  hit.onmousemove = e => {
+    const r = hit.getBoundingClientRect(), v = lo + (e.clientX - r.left) / r.width * (hi - lo);
+    xh.setAttribute("x1", X(v)); xh.setAttribute("x2", X(v)); xh.style.display = "";
+    showTip(e, `<b>≤ ${fmt(v, 1)} ${esc(mt.unit)}</b>` + all.map(s => `<div class="r"><span>${swatch(s.c)}${esc(s.lab)}</span><b>${fmt(100 * upper(s.a, v) / s.a.length)}%</b></div>`).join(""));
+  };
+  hit.onmouseleave = () => { xh.style.display = "none"; hideTip(); };
+  const qs = [.1,.25,.5,.75,.9];
+  $("#dq").innerHTML = `<table><thead><tr><th>Method</th><th>n</th>${qs.map(q => `<th>p${q * 100}</th>`).join("")}<th>mean</th></tr></thead><tbody>` +
+    all.map(s => `<tr><td><span class="mname">${swatch(s.c)}${esc(s.lab)}</span></td><td class="dim">${s.a.length}</td>${qs.map(q => `<td>${fmt(quant(s.a, q))}</td>`).join("")}<td>${fmt(mean(s.a))}</td></tr>`).join("") + `</tbody></table>`;
+}
+function upper(a, v){ let lo = 0, hi = a.length; while(lo < hi){ const md = (lo + hi) >> 1; if(a[md] <= v) lo = md + 1; else hi = md; } return lo; }
+function niceTicks(lo, hi, n){
+  const span = hi - lo, raw = span / n, mag = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / mag;
+  const step = (f < 1.5 ? 1 : f < 3 ? 2 : f < 7 ? 5 : 10) * mag, out = [];
+  for(let t = Math.ceil(lo / step) * step; t <= hi + 1e-9; t += step) out.push(+t.toFixed(10));
+  return out;
+}
+
+// Breakdown ------------------------------------------------------------
+const GROUPS = {obj:["Object", i => S.seqObj[S.R.shard[i]]], seq:["Sequence", i => S.meta.seqs[S.R.shard[i]].shard],
+  sid:["Subject", i => S.meta.seqs[S.R.shard[i]].sid], hand:["Hand", i => S.R.hand[i] ? "right" : "left"],
+  gtc:["GT contact", i => S.R.gt_contact[i] ? "in contact" : "not in contact"]};
+function renderBreakdown(){
+  const key = S.bdMetric, mt = S.metricMap[key], [gl, gf] = GROUPS[S.bdGroup], m = mask(), R = S.R, ms = onMethods();
+  $("#main").innerHTML = `<div class="card"><h2>Breakdown</h2>
+    <p class="sub">The ${S.stat} of the chosen metric for each group (detected hand-frames). Darker cells are larger (shading spans the smallest to the largest value in the table; signed metrics use |value|). ${S.bdGroup === "seq" ? "Click a sequence to open it in the 3D frame view." : ""}</p>
+    <div class="ctl"><label class="f">Metric ${metricSelect("bm", key)}</label>
+    <label class="f">Group by <select id="bg">${Object.entries(GROUPS).map(([k, [l]]) => `<option value="${k}" ${k === S.bdGroup ? "selected" : ""}>${l}</option>`).join("")}</select></label>
+    <label class="f">Statistic <select id="bst">${["median","mean","p90"].map(x => `<option ${x === S.stat ? "selected" : ""}>${x}</option>`).join("")}</select></label></div>
+    <div class="tw" id="bt"></div></div>`;
+  $("#bm").onchange = e => { S.bdMetric = e.target.value; render(); };
+  $("#bg").onchange = e => { S.bdGroup = e.target.value; render(); };
+  $("#bst").onchange = e => { S.stat = e.target.value; render(); };
+  const srcs = ms.map(srcOf), buckets = new Map(), col = R[key];
+  for(let i = 0; i < S.N; i++){
+    if(!m[i] || R.detected[i] !== 1 || col[i] === null) continue;
+    const j = srcs.indexOf(R.src[i]); if(j < 0) continue;
+    const g = gf(i); if(!buckets.has(g)) buckets.set(g, ms.map(() => []));
+    buckets.get(g)[j].push(col[i]);
+  }
+  const groups = [...buckets.keys()].sort();
+  const cell = {}; let vmax = 0, vmin = Infinity;
+  for(const g of groups){ cell[g] = buckets.get(g).map(a => { const s = Float64Array.from(a).sort(); return {v:statOf(s, S.stat), n:s.length}; });
+    for(const c of cell[g]) if(Number.isFinite(c.v)){ vmax = Math.max(vmax, Math.abs(c.v)); vmin = Math.min(vmin, Math.abs(c.v)); } }
+  const ramp = [0,1,2,3,4,5,6].map(i => css(`--q${i}`));
+  const shade = v => { if(!Number.isFinite(v) || !vmax) return ""; const t = vmax > vmin ? Math.min(6, Math.floor((Math.abs(v) - vmin) / (vmax - vmin) * 6.999)) : 3;
+    const dark = document.documentElement.matches(":root") && getComputedStyle(document.documentElement).colorScheme === "dark";
+    const ink = dark ? (t >= 5 ? "#0b0b0b" : "") : (t >= 4 ? "#fff" : "");
+    return `background:${ramp[t]};${ink ? "color:" + ink : ""}`; };
+  const seqIdx = new Map(S.meta.seqs.map(s => [s.shard, s]));
+  $("#bt").innerHTML = `<table><thead><tr><th>${gl}</th>${ms.map(k => `<th><span class="mname">${swatch(mColor(k))}${esc(mLabel(k))}</span></th>`).join("")}<th>n</th></tr></thead><tbody>` +
+    groups.map(g => `<tr class="${S.bdGroup === "seq" ? "click" : ""}" data-g="${esc(g)}"><td>${S.bdGroup === "seq" ? esc(`${seqIdx.get(g).seq}  v${seqIdx.get(g).view}`) : esc(g)}</td>` +
+      cell[g].map((c, j) => `<td style="${shade(c.v)}" title="${esc(mLabel(ms[j]))}: ${fmt(c.v)} ${esc(mt.unit)} (n=${c.n})">${fmt(c.v)}</td>`).join("") +
+      `<td class="dim">${Math.max(...cell[g].map(c => c.n))}</td></tr>`).join("") + `</tbody></table>`;
+  if(S.bdGroup === "seq") for(const tr of document.querySelectorAll("#bt tr.click")) tr.onclick = () => {
+    Object.assign(S.fr, {shard:tr.dataset.g, i:0, metric:key, worst:-1}); S.tab = "frames"; render(); };
+}
+
+// Contact --------------------------------------------------------------
+const binOf = (x, bins) => { for(let k = 0; k < bins.length; k++) if(x > bins[k][0] && x <= bins[k][1]) return k; return -1; };
+function renderContact(){
+  const R = S.R, parts = S.meta.parts, hasRA = !!R["ra_sd_palm"];
+  if(!R["gt_sd_palm"]){ $("#main").innerHTML = `<div class="card empty">This run has no per-part signed distances.</div>`; return; }
+  if(!hasRA) S.ctRA = false;
+  let gmax = -Infinity; for(const v of R.gt_sd_palm) if(v !== null && v > gmax) gmax = v;
+  const clipped = gmax <= 30.05;
+  const pcols = ["--c0","--c1","--c2","--c3","--c4","--c5"].map(css);
+  $("#main").innerHTML = `<div class="card"><h2>Contact state: where does each predicted hand part land?</h2>
+    <p class="sub">The unit is one hand part (palm or a finger) of a detected hand-frame. Each row groups parts by their ground-truth distance to the object surface; the bar shows where the prediction puts the same part relative to the same ground-truth object. Negative = inside the object. "err p50" is the median of predicted minus GT signed distance.
+    ${clipped ? `<br><b>Note:</b> distances in this run were clipped at 30 mm (eval run without <code>--sdf-pad 150</code>), so the bins beyond 30 mm are not meaningful.` : ""}</p>
+    <div class="ctl"><label class="f">Part <select id="cp"><option value="all">all parts</option>${parts.map(p => `<option ${p === S.ctPart ? "selected" : ""}>${p}</option>`).join("")}</select></label>
+    <label class="f" title="${hasRA ? "" : "not in this run"}"><input type="checkbox" id="cra" ${S.ctRA ? "checked" : ""} ${hasRA ? "" : "disabled"}> wrist-aligned (predicted hand moved onto the GT wrist: pose only)</label></div>
+    <div class="legend">${PRED_BINS.map((b, k) => `<span>${swatch(pcols[k])}${b[2]}</span>`).join("")}</div>
+    <div class="cgrid" id="cg"></div></div>`;
+  $("#cp").value = S.ctPart;
+  $("#cp").onchange = e => { S.ctPart = e.target.value; render(); };
+  $("#cra").onchange = e => { S.ctRA = e.target.checked; render(); };
+  const m = mask(), ps = S.ctPart === "all" ? parts : [S.ctPart], pre = S.ctRA ? "ra_sd_" : "sd_";
+  const ms = onMethods(), out = [];
+  for(const k of ms){
+    const s = srcOf(k), cnt = GT_BINS.map(() => new Array(PRED_BINS.length).fill(0)), err = GT_BINS.map(() => []);
+    for(let i = 0; i < S.N; i++){
+      if(R.src[i] !== s || !m[i] || R.detected[i] !== 1) continue;
+      for(const p of ps){ const g = R["gt_sd_" + p][i], v = R[pre + p] && R[pre + p][i]; if(g === null || v === null || v === undefined) continue;
+        const gb = binOf(g, GT_BINS), pb = binOf(v, PRED_BINS); if(gb < 0 || pb < 0) continue; cnt[gb][pb]++; err[gb].push(v - g); }
+    }
+    out.push(`<div><div class="mname" style="font-weight:600;margin-bottom:6px">${swatch(mColor(k))}${esc(mLabel(k))}${S.ctRA ? " <span class='dim'>(wrist-aligned)</span>" : ""}</div>
+      <div class="crow dim"><span>GT state</span><span class="n">n</span><span>predicted part</span><span class="e">err p50</span></div>` +
+      GT_BINS.map((b, gb) => { const n = cnt[gb].reduce((a, c) => a + c, 0); const e = Float64Array.from(err[gb]).sort();
+        return `<div class="crow"><span>${b[2]}</span><span class="n">${n}</span><div class="stack">${n ? cnt[gb].map((c, pb) => c ? `<div style="width:${100 * c / n}%;background:${pcols[pb]}" data-t="${esc(`${mLabel(k)}<br>GT ${b[2]} → predicted <b>${PRED_BINS[pb][2]}</b><br>${(100 * c / n).toFixed(1)}% (${c} of ${n})`)}"></div>` : "").join("") : ""}</div><span class="e">${n ? (quant(e, .5) >= 0 ? "+" : "") + fmt(quant(e, .5)) : "—"}</span></div>`; }).join("") + `</div>`);
+  }
+  $("#cg").innerHTML = out.join("") || `<div class="empty">No active methods.</div>`;
+  $("#cg").onmousemove = e => { const t = e.target.dataset && e.target.dataset.t; t ? showTip(e, t) : hideTip(); };
+  $("#cg").onmouseleave = hideTip;
+}
+
+// Frames (3D) ------------------------------------------------------------
+let F3 = null;
+async function loadShard(shard){
+  if(cache.hands.has(shard)) return cache.hands.get(shard);
+  const [j, b] = await Promise.all([getJSON(`data/${S.run}/hands/${shard}.json`), fetch(`data/${S.run}/hands/${shard}.bin`).then(r => r.arrayBuffer())]);
+  const d = {j, a:new Int16Array(b)}; cache.hands.set(shard, d); return d;
+}
+function renderFrames(){
+  const meta = S.meta, o = $("#fObj").value;
+  if(!meta.has3d){ $("#main").innerHTML = `<div class="card empty">This run was exported without <code>--hands</code>, so there is no 3D data.</div>`; return; }
+  if(typeof THREE === "undefined"){ $("#main").innerHTML = `<div class="card empty">three.js did not load (offline?).</div>`; return; }
+  const seqs = meta.seqs.filter(s => s.has3d && (o === "all" || s.obj === o));
+  if(!seqs.length){ $("#main").innerHTML = `<div class="card empty">No sequences match the object filter.</div>`; return; }
+  if(!seqs.some(s => s.shard === S.fr.shard)) Object.assign(S.fr, {shard:seqs[0].shard, i:0, worst:-1});
+  if($("#fHand").value !== "all") S.fr.hand = $("#fHand").value === "1" ? "right" : "left";
+  const F = S.fr;
+  $("#main").innerHTML = `<div class="fr"><div>
+      <div class="card" style="padding:10px">
+        <div class="ctl" style="margin-bottom:8px">
+          <label class="f">Sequence <select id="fs">${seqs.map(s => `<option value="${s.shard}" ${s.shard === F.shard ? "selected" : ""}>${esc(s.seq)} · v${s.view} (${s.n_left}L/${s.n_right}R)</option>`).join("")}</select></label>
+          <label class="f">Hand <select id="fh"><option ${F.hand === "left" ? "selected" : ""}>left</option><option ${F.hand === "right" ? "selected" : ""}>right</option></select></label>
+          <button id="fprev" title="previous (←)">◀</button><button id="fplay">▶ play</button><button id="fnext" title="next (→)">▶</button>
+          <input type="range" id="fslider" style="flex:1;min-width:120px">
+          <span id="fpos" class="note"></span>
+        </div>
+        <div id="three"><div class="ov" id="ov"></div></div>
+        <div class="chk" style="margin-top:8px">
+          <label><input type="checkbox" id="cgt" ${F.gt ? "checked" : ""}> GT hand</label>
+          <label><input type="checkbox" id="cob" ${F.obj ? "checked" : ""}> GT object</label>
+          <label><input type="checkbox" id="cpo" ${F.pobj ? "checked" : ""}> predicted object (if any)</label>
+          <label><input type="checkbox" id="cwa" ${F.wa ? "checked" : ""}> wrist-aligned</label>
+          <label><input type="checkbox" id="csk" ${F.skel ? "checked" : ""}> joints</label>
+          <label><input type="checkbox" id="cxr" ${F.xray ? "checked" : ""}> translucent</label>
+          <button id="vcam">camera view</button><button id="vhand">orbit hand</button>
+        </div>
+        <p class="sub" style="margin:8px 0 0">Units: mm, in the camera frame of this view. Grey = ground truth; the object is shown at its GT pose, and a method's own object estimate (if it has one) as a wireframe. Drag to orbit, scroll to zoom, right-drag to pan; ← → step frames. With "wrist-aligned" on, each prediction is moved so its wrist sits on the GT wrist, which shows pose error without placement error.</p>
+      </div>
+      <div class="card"><h2 id="ftitle"></h2><div class="tw" id="ftab"></div></div>
+      <div class="card"><h2>Along the sequence</h2>
+        <div class="ctl"><label class="f">Metric ${metricSelect("fm", F.metric)}</label><button id="fworst" title="step through frames from worst to best for the first active method">next worst ▼</button></div>
+        <div id="tl"></div></div>
+    </div>
+</div>`;
+  $("#fs").onchange = e => { Object.assign(F, {shard:e.target.value, i:0, worst:-1}); F3.resetView = true; drawFrame(); };
+  $("#fh").onchange = e => { Object.assign(F, {hand:e.target.value, i:0, worst:-1}); F3.resetView = true; drawFrame(); };
+  $("#fprev").onclick = () => step(-1); $("#fnext").onclick = () => step(1);
+  $("#fslider").oninput = e => { F.i = +e.target.value; drawFrame(); };
+  $("#fplay").onclick = () => { if(F3.timer){ clearInterval(F3.timer); F3.timer = null; $("#fplay").textContent = "▶ play"; }
+    else { F3.timer = setInterval(() => step(1, true), 250); $("#fplay").textContent = "❚❚ pause"; } };
+  for(const [id, k] of [["#cgt","gt"],["#cob","obj"],["#cpo","pobj"],["#cwa","wa"],["#csk","skel"],["#cxr","xray"]]) $(id).onchange = e => { F[k] = e.target.checked; drawFrame(); };
+  $("#vcam").onclick = () => { F3.view("cam"); }; $("#vhand").onclick = () => { F3.view("hand"); };
+  $("#fm").onchange = e => { F.metric = e.target.value; F.worst = -1; drawFrame(); };
+  $("#fworst").onclick = () => {
+    const ord = frameOrder(); if(!ord.length) return; F.worst = (F.worst + 1) % ord.length; F.i = ord[F.worst]; drawFrame(); };
+  if(!F3) F3 = make3D();
+  F3.attach($("#three"));
+  F3.resetView = true;
+  drawFrame();
+}
+function step(d, loop){ const n = curSide() ? curSide().n : 0; if(!n) return; let i = S.fr.i + d; if(loop) i = (i + n) % n; S.fr.i = Math.max(0, Math.min(n - 1, i)); drawFrame(); }
+function curSide(){ const d = cache.hands.get(S.fr.shard); return d && d.j.sides[S.fr.hand]; }
+function frameOrder(){
+  const sd = curSide(), k = onMethods()[0]; if(!sd || !k) return [];
+  const sh = S.meta.seqs.findIndex(s => s.shard === S.fr.shard), h = S.fr.hand === "right" ? 1 : 0, s = srcOf(k), c = S.R[S.fr.metric], mt = S.metricMap[S.fr.metric];
+  const idx = sd.frame.map((f, i) => { const r = S.lookup.get(`${sh}|${h}|${f}|${s}`); const v = r === undefined ? null : c[r]; return [i, v === null ? -Infinity : (mt.lower === null ? Math.abs(v) : (mt.lower ? v : -v))]; });
+  return idx.filter(x => x[1] > -Infinity).sort((a, b) => b[1] - a[1]).map(x => x[0]);
+}
+document.addEventListener("keydown", e => { if(S.tab !== "frames" || /INPUT|SELECT/.test(document.activeElement.tagName) && document.activeElement.type !== "range") return;
+  if(e.key === "ArrowLeft"){ step(-1); e.preventDefault(); } if(e.key === "ArrowRight"){ step(1); e.preventDefault(); } });
+
+async function drawFrame(){
+  const F = S.fr, d = await loadShard(F.shard);
+  if(!cache.objects) cache.objects = await getJSON(`data/${S.run}/objects.json`).catch(() => ({}));
+  if(S.tab !== "frames") return;
+  let sd = d.j.sides[F.hand];
+  if(!sd){ F.hand = F.hand === "right" ? "left" : "right"; sd = d.j.sides[F.hand]; $("#fh").value = F.hand; }
+  F.i = Math.max(0, Math.min(sd.n - 1, F.i));
+  const sl = $("#fslider"); sl.max = sd.n - 1; sl.value = F.i;
+  const sq = S.meta.seqs.find(s => s.shard === F.shard), shI = S.meta.seqs.indexOf(sq), h = F.hand === "right" ? 1 : 0, frame = sd.frame[F.i];
+  $("#fpos").textContent = `${F.i + 1}/${sd.n} · frame ${frame}`;
+  const gtRow = S.lookup.get(`${shI}|${h}|${frame}|0`);
+  $("#ov").textContent = `${sq.seq} · view ${sq.view} · ${F.hand} hand · frame ${frame}` + (gtRow !== undefined && S.R.gt_contact[gtRow] ? " · GT in contact" : "");
+  F3.update(d, sd, sq.obj, cache.objects[sq.obj]);
+  // per-frame table
+  const cols = ["pa_mpjpe","mpjpe_ra","mpjpe_cam","root_err","depth_err","kp2d_err_px","min_sd_mm","pen_max_mm","obj_t_err_mm","obj_rot_err_deg"].filter(k => S.metricMap[k]);
+  const srcs = ["gt", ...onMethods()];
+  $("#ftitle").textContent = `Frame ${frame}`;
+  $("#ftab").innerHTML = `<table><thead><tr><th></th><th>score</th>${cols.map(k => `<th title="${esc(metricLabel(k))}">${esc(S.metricMap[k].label)}<br><span class="dim">${esc(S.metricMap[k].unit)}</span></th>`).join("")}</tr></thead><tbody>` +
+    srcs.map(k => { const r = S.lookup.get(`${shI}|${h}|${frame}|${srcOf(k)}`); const det = r !== undefined && (k === "gt" || S.R.detected[r] === 1);
+      return `<tr><td><span class="mname">${swatch(k === "gt" ? css("--gt") : mColor(k))}${k === "gt" ? "GT" : esc(mLabel(k))}</span></td>` +
+        (det ? `<td>${k === "gt" ? "" : fmt(S.R.score ? S.R.score[r] : NaN, 2)}</td>` + cols.map(c => `<td>${fmt(S.R[c][r] ?? NaN)}</td>`).join("") : `<td colspan="${cols.length + 1}" class="dim" style="text-align:left">not detected</td>`) + `</tr>`; }).join("") + `</tbody></table>`;
+  drawTimeline(sd, shI, h);
+  writeHash();
+}
+function drawTimeline(sd, shI, h){
+  const el = $("#tl"), key = S.fr.metric, mt = S.metricMap[key], c = S.R[key], ms = onMethods();
+  const W = el.clientWidth || 700, H = 200, ml = 46, mr = 12, mtp = 8, mb = 26, iw = W - ml - mr, ih = H - mtp - mb, n = sd.n;
+  const series = ms.map(k => ({k, c:mColor(k), v:sd.frame.map(f => { const r = S.lookup.get(`${shI}|${h}|${f}|${srcOf(k)}`); return r === undefined || S.R.detected[r] !== 1 ? null : c[r]; })}));
+  if(key === "min_sd_mm" || key === "pen_max_mm") series.unshift({k:"gt", c:css("--gt"), v:sd.frame.map(f => { const r = S.lookup.get(`${shI}|${h}|${f}|0`); return r === undefined ? null : c[r]; })});
+  const all = series.flatMap(s => s.v).filter(v => v !== null);
+  if(!all.length){ el.innerHTML = `<div class="empty">No values.</div>`; return; }
+  let lo = Math.min(0, ...all), hi = Math.max(...all); if(hi <= lo) hi = lo + 1;
+  const X = i => ml + (n > 1 ? i / (n - 1) : .5) * iw, Y = v => mtp + (1 - (v - lo) / (hi - lo)) * ih, yt = niceTicks(lo, hi, 4);
+  let svg = `<svg width="${W}" height="${H}"><g class="grid">${yt.map(t => `<line x1="${ml}" x2="${ml + iw}" y1="${Y(t)}" y2="${Y(t)}"/>`).join("")}</g>` +
+    yt.map(t => `<text x="${ml - 6}" y="${Y(t) + 4}" text-anchor="end">${+t.toFixed(1)}</text>`).join("") +
+    [0, Math.floor((n - 1) / 2), n - 1].map(i => `<text x="${X(i)}" y="${H - 8}" text-anchor="middle">${sd.frame[i]}</text>`).join("") +
+    `<line x1="${X(S.fr.i)}" x2="${X(S.fr.i)}" y1="${mtp}" y2="${mtp + ih}" stroke="${css("--ink2")}" stroke-width="1"/>`;
+  for(const s of series){
+    let d = "", pen = false;
+    s.v.forEach((v, i) => { if(v === null){ pen = false; return; } d += `${pen ? "L" : "M"}${X(i).toFixed(1)},${Y(v).toFixed(1)}`; pen = true; });
+    svg += `<path d="${d}" fill="none" stroke="${s.c}" stroke-width="2" ${s.k === "gt" ? 'stroke-dasharray="4 3"' : ""}/>`;
+    const v = s.v[S.fr.i]; if(v !== null) svg += `<circle cx="${X(S.fr.i)}" cy="${Y(v)}" r="4" fill="${s.c}" stroke="${css("--panel")}" stroke-width="2"/>`;
+  }
+  svg += `<rect id="tlh" x="${ml}" y="${mtp}" width="${iw}" height="${ih}" fill="transparent" style="cursor:pointer"/></svg>`;
+  el.innerHTML = `<div class="legend">${series.map(s => `<span>${swatch(s.c)}${s.k === "gt" ? "ground truth" : esc(mLabel(s.k))}</span>`).join("")}<span class="dim">${esc(metricLabel(key))}; click to jump</span></div>` + svg;
+  const hit = el.querySelector("#tlh"), at = e => { const r = hit.getBoundingClientRect(); return Math.max(0, Math.min(n - 1, Math.round((e.clientX - r.left) / r.width * (n - 1)))); };
+  hit.onmousemove = e => { const i = at(e); showTip(e, `<b>frame ${sd.frame[i]}</b>` + series.map(s => `<div class="r"><span>${swatch(s.c)}${s.k === "gt" ? "GT" : esc(mLabel(s.k))}</span><b>${s.v[i] === null ? "—" : fmt(s.v[i])}</b></div>`).join("")); };
+  hit.onmouseleave = hideTip;
+  hit.onclick = e => { S.fr.i = at(e); drawFrame(); };
+}
+
+function make3D(){
+  const renderer = new THREE.WebGLRenderer({antialias:true});
+  renderer.setPixelRatio(Math.min(2, devicePixelRatio));
+  const scene = new THREE.Scene(), cam = new THREE.PerspectiveCamera(40, 1.5, 5, 20000);
+  scene.add(cam);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x666666, 0.75));
+  const dl = new THREE.DirectionalLight(0xffffff, 0.7); dl.position.set(0.3, 0.5, 1); cam.add(dl);
+  const ctl = new THREE.OrbitControls(cam, renderer.domElement);
+  ctl.enableDamping = true;
+  const hands = new Map(), skels = new Map(), pobjs = new Map();
+  let objMesh = null, objName = null, host = null, lastK = null, gtCentroid = new THREE.Vector3(0, 0, -500);
+  const T = {
+    timer:null, resetView:true,
+    attach(el){ host = el; el.appendChild(renderer.domElement); T.resize(); T.theme(); },
+    detach(){ if(T.timer){ clearInterval(T.timer); T.timer = null; } if(renderer.domElement.parentNode) renderer.domElement.parentNode.removeChild(renderer.domElement); host = null; },
+    theme(){ renderer.setClearColor(new THREE.Color(css("--panel"))); if(objMesh) objMesh.material.color.set(css("--obj")); },
+    resize(){ if(!host) return; const w = host.clientWidth, h = host.clientHeight; renderer.setSize(w, h); cam.aspect = w / h; cam.updateProjectionMatrix(); },
+    view(kind){
+      if(kind === "cam"){ cam.position.set(0, 0, 0); cam.up.set(0, 1, 0); ctl.target.set(0, 0, gtCentroid.z); }
+      else { const dir = new THREE.Vector3().subVectors(cam.position, ctl.target).normalize(); ctl.target.copy(gtCentroid); cam.position.copy(gtCentroid).addScaledVector(dir, 450); }
+      ctl.update();
+    },
+    update(d, sd, obj, tmpl){
+      const F = S.fr, a = d.a, q = d.j.q, nv = 778, i = F.i, faces = S.meta.mano_faces[F.hand];
+      const K = d.j.K_full; if(K !== lastK){ cam.fov = 2 * Math.atan(K[1][2] / K[1][1]) * 180 / Math.PI; cam.updateProjectionMatrix(); lastK = K; }
+      const read = (off, n, base) => { const o = off + i * n * 3; if(a[o] === -32768) return null; const out = new Float32Array(n * 3);
+        for(let v = 0; v < n * 3; v += 3){ out[v] = a[o + v] / q; out[v + 1] = -a[o + v + 1] / q; out[v + 2] = -a[o + v + 2] / q; } return out; };
+      const gtJ = sd.src.gt ? read(sd.src.gt.j, 21) : null;
+      const active = new Set(["gt", ...onMethods()]);
+      for(const [k, m] of hands) m.visible = false; for(const [k, m] of skels) m.visible = false; for(const [k, m] of pobjs) m.visible = false;
+      for(const k of Object.keys(sd.src)){
+        if(!active.has(k) || (k === "gt" && !F.gt)) continue;
+        const e = sd.src[k]; let V = read(e.v, nv), J = read(e.j, 21);
+        if(!V) continue;
+        if(F.wa && k !== "gt" && gtJ){ const dx = gtJ[0] - J[0], dy = gtJ[1] - J[1], dz = gtJ[2] - J[2];
+          for(let v = 0; v < V.length; v += 3){ V[v] += dx; V[v + 1] += dy; V[v + 2] += dz; } for(let v = 0; v < J.length; v += 3){ J[v] += dx; J[v + 1] += dy; J[v + 2] += dz; } }
+        let m = hands.get(k);
+        const color = k === "gt" ? css("--gt") : mColor(k);
+        if(!m){ const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.BufferAttribute(new Float32Array(nv * 3), 3));
+          m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({roughness:.65, metalness:0, side:THREE.DoubleSide})); scene.add(m); hands.set(k, m); }
+        if(m.userData.side !== F.hand){ m.geometry.setIndex(faces); m.userData.side = F.hand; }
+        m.material.color.set(color);
+        const tr = F.xray && k !== "gt"; m.material.transparent = tr; m.material.opacity = tr ? .6 : 1; m.material.depthWrite = !tr;
+        m.geometry.attributes.position.array.set(V); m.geometry.attributes.position.needsUpdate = true;
+        m.geometry.computeVertexNormals(); m.geometry.computeBoundingSphere(); m.visible = true; m.renderOrder = k === "gt" ? 0 : 1;
+        if(F.skel){ let s = skels.get(k); const P = S.meta.joint_parents, seg = new Float32Array(20 * 6);
+          let w = 0; for(let j = 1; j < 21; j++){ const p = P[j]; seg.set([J[3*p], J[3*p+1], J[3*p+2], J[3*j], J[3*j+1], J[3*j+2]], w); w += 6; }
+          if(!s){ s = new THREE.LineSegments(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({depthTest:false})); s.renderOrder = 5; scene.add(s); skels.set(k, s); }
+          s.geometry.setAttribute("position", new THREE.BufferAttribute(seg, 3)); s.material.color.set(color); s.visible = true; }
+        if(k === "gt"){ gtCentroid.set(0, 0, 0); for(let v = 0; v < V.length; v += 3) gtCentroid.add(new THREE.Vector3(V[v], V[v + 1], V[v + 2])); gtCentroid.multiplyScalar(3 / V.length); }
+      }
+      if(!sd.src.gt || !F.gt){ const gJ = gtJ; if(gJ) gtCentroid.set(gJ[0], gJ[1], gJ[2]); }
+      // objects
+      const pose = (Tm, rad) => { const V = tmpl.v, top = tmpl.top, n = V.length / 3, out = new Float32Array(V.length), c = Math.cos(-rad), s = Math.sin(-rad);
+        for(let v = 0; v < n; v++){ let x = V[3*v], y = V[3*v+1], z = V[3*v+2]; if(top[v]){ const x2 = c * x - s * y; y = s * x + c * y; x = x2; }
+          out[3*v] = Tm[0][0]*x + Tm[0][1]*y + Tm[0][2]*z + Tm[0][3]; out[3*v+1] = -(Tm[1][0]*x + Tm[1][1]*y + Tm[1][2]*z + Tm[1][3]); out[3*v+2] = -(Tm[2][0]*x + Tm[2][1]*y + Tm[2][2]*z + Tm[2][3]); }
+        return out; };
+      if(tmpl && objName !== obj){
+        if(objMesh){ scene.remove(objMesh); objMesh.geometry.dispose(); }
+        const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.BufferAttribute(new Float32Array(tmpl.v.length), 3)); g.setIndex(tmpl.f);
+        objMesh = new THREE.Mesh(g, new THREE.MeshStandardMaterial({color:css("--obj"), roughness:.9, transparent:true, opacity:.55, depthWrite:false, side:THREE.DoubleSide}));
+        objMesh.renderOrder = 2; scene.add(objMesh); objName = obj;
+        for(const [k, m] of pobjs){ scene.remove(m); m.geometry.dispose(); } pobjs.clear();
+      }
+      if(objMesh){ objMesh.visible = F.obj && !!tmpl;
+        if(objMesh.visible){ objMesh.geometry.attributes.position.array.set(pose(sd.obj_T_mm[i], sd.obj_rad[i])); objMesh.geometry.attributes.position.needsUpdate = true; objMesh.geometry.computeVertexNormals(); objMesh.geometry.computeBoundingSphere(); } }
+      if(tmpl && F.pobj) for(const k of onMethods()){ const e = sd.src[k]; if(!e || !e.obj_T_mm) continue; const Tm = e.obj_T_mm[i]; if(!Tm[0][0] && !Tm[1][1] && !Tm[2][2]) continue;
+        let m = pobjs.get(k);
+        if(!m){ const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.BufferAttribute(new Float32Array(tmpl.v.length), 3)); g.setIndex(tmpl.f);
+          m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({wireframe:true, transparent:true, opacity:.18, depthWrite:false})); scene.add(m); pobjs.set(k, m); }
+        m.material.color.set(mColor(k)); m.geometry.attributes.position.array.set(pose(Tm, e.obj_rad[i])); m.geometry.attributes.position.needsUpdate = true; m.geometry.computeBoundingSphere(); m.visible = true; }
+      if(T.resetView){ T.view("cam"); T.view("hand"); T.resetView = false; }
+    },
+  };
+  new ResizeObserver(() => T.resize()).observe(document.body);
+  (function loop(){ requestAnimationFrame(loop); if(host){ ctl.update(); renderer.render(scene, cam); } })();
+  return T;
+}
+
+init();
+</script>
+</body>
+</html>
